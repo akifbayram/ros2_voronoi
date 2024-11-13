@@ -9,7 +9,6 @@ setup(
     version='0.0.1',
     packages=[package_name],
     py_modules=[
-        'script.dijkstra',
         'script.voronoi_tb4',
         'script.voronoi_tb3'
     ],
