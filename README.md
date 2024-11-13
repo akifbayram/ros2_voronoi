@@ -7,7 +7,7 @@
 
 ## Overview
 
-The project aims to use a Voronoi-partition-based exploration algorithm to enable multiple robots to autonomously navigate and explore an environment, generating a map through TurtleBot simulations.
+This project aims to use a Voronoi-partition-based exploration algorithm to enable multiple robots to autonomously navigate and explore an environment, generating a map through TurtleBot simulations.
 
 ---
 
@@ -33,6 +33,8 @@ colcon build
 ---
 
 ## TurtleBot4 Simulation
+
+The launch file `tb4.launch.py` may be modified for one or multiple robots.
 
 1. **Launch Simulation**:
    ```bash
