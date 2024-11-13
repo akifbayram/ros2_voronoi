@@ -1,0 +1,234 @@
+--- Folder Structure ---
+[docs]
+    └── .project_structure_ignore
+[src]
+    └── [voronoi]
+        ├── package.xml
+        ├── [resource]
+            └── voronoi
+        ├── [scripts]
+            ├── __init__.py
+            └── ddpg_test.py
+        ├── setup.cfg
+        ├── setup.py
+        ├── [test]
+            ├── test_copyright.py
+            ├── test_flake8.py
+            └── test_pep257.py
+        └── [voronoi]
+            └── __init__.py
+
+--- File Contents ---
+
+--- File: docs/.project_structure_ignore ---
+
+
+--- File: src/voronoi/package.xml ---
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>voronoi</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="akifbayram@gmail.com">cs488</maintainer>
+  <license>TODO: License declaration</license>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <depend>rclpy</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
+
+
+--- File: src/voronoi/resource/voronoi ---
+
+
+--- File: src/voronoi/scripts/__init__.py ---
+
+
+--- File: src/voronoi/scripts/ddpg_test.py ---
+#!/usr/bin/env python3
+
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+class DDPGTestNode(Node):
+    def __init__(self):
+        super().__init__('ddpg_test_node')
+        
+        # Create a publisher (publishing to a 'status' topic)
+        self.publisher_ = self.create_publisher(String, 'status', 10)
+        
+        # Set up a timer to publish at regular intervals (0.5 seconds)
+        timer_period = 0.5  # seconds
+        self.timer = self.create_timer(timer_period, self.timer_callback)
+        
+        # Add log to indicate the node has started
+        self.get_logger().info('DDPG Test Node has started.')
+        
+        # Initialize any necessary variables or states
+        self.counter = 0
+
+    def timer_callback(self):
+        # Create a simple String message
+        msg = String()
+        msg.data = f'Publishing DDPG test message #{self.counter}'
+        
+        # Publish the message
+        self.publisher_.publish(msg)
+        
+        # Log the published message
+        self.get_logger().info(f'Published: "{msg.data}"')
+        
+        # Increment the counter for the next message
+        self.counter += 1
+
+
+def main(args=None):
+    # Initialize the rclpy library
+    rclpy.init(args=args)
+
+    # Create an instance of the node
+    node = DDPGTestNode()
+
+    # Keep the node alive
+    rclpy.spin(node)
+
+    # Shutdown once done
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+
+
+--- File: src/voronoi/setup.cfg ---
+[develop]
+script_dir=$base/lib/voronoi
+[install]
+install_scripts=$base/lib/voronoi
+
+
+--- File: src/voronoi/setup.py ---
+from setuptools import setup
+
+package_name = 'voronoi'
+
+setup(
+    name=package_name,
+    version='0.0.1',
+    packages=[package_name],
+    py_modules=[
+        'scripts.ddpg_test', 
+    ],
+    data_files=[
+        ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
+        ('share/' + package_name, ['package.xml']),
+    ],
+    install_requires=['setuptools'],
+    zip_safe=True,
+    maintainer='Akif Bayram',
+    maintainer_email='akif@example.com',
+    description='Voronoi-based multi-robot exploration using ROS2',
+    license='Apache License 2.0',
+    tests_require=['pytest'],
+    entry_points={
+        'console_scripts': [
+            'ddpg_test = scripts.ddpg_test:main', 
+        ],
+    },
+)
+
+
+--- File: src/voronoi/test/test_copyright.py ---
+# Copyright 2015 Open Source Robotics Foundation, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from ament_copyright.main import main
+import pytest
+
+
+# Remove the `skip` decorator once the source file(s) have a copyright header
+@pytest.mark.skip(reason='No copyright header has been placed in the generated source file.')
+@pytest.mark.copyright
+@pytest.mark.linter
+def test_copyright():
+    rc = main(argv=['.', 'test'])
+    assert rc == 0, 'Found errors'
+
+
+--- File: src/voronoi/test/test_flake8.py ---
+# Copyright 2017 Open Source Robotics Foundation, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from ament_flake8.main import main_with_errors
+import pytest
+
+
+@pytest.mark.flake8
+@pytest.mark.linter
+def test_flake8():
+    rc, errors = main_with_errors(argv=[])
+    assert rc == 0, \
+        'Found %d code style errors / warnings:\n' % len(errors) + \
+        '\n'.join(errors)
+
+
+--- File: src/voronoi/test/test_pep257.py ---
+# Copyright 2015 Open Source Robotics Foundation, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from ament_pep257.main import main
+import pytest
+
+
+@pytest.mark.linter
+@pytest.mark.pep257
+def test_pep257():
+    rc = main(argv=['.', 'test'])
+    assert rc == 0, 'Found code style errors / warnings'
+
+
+--- File: src/voronoi/voronoi/__init__.py ---
+
