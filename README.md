@@ -48,7 +48,7 @@ The launch file `tb4.launch.py` may be modified for one or multiple robots.
    source /etc/turtlebot4/setup.bash
    cd ~/ros2_voronoi
    . install/setup.bash
-   ros2 run voronoi control_tb4
+   ros2 run voronoi voronoi_tb4
    ```
 
 ---
@@ -67,7 +67,7 @@ The launch file `tb4.launch.py` may be modified for one or multiple robots.
    source /etc/turtlebot4/setup.bash
    cd ~/ros2_voronoi
    . install/setup.bash
-   ros2 run voronoi control_tb3
+   ros2 run voronoi voronoi_tb3
    ```
 
 ---
