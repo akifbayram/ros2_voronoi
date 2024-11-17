@@ -17,6 +17,9 @@ setup(
         ('share/' + package_name, ['package.xml']),
         # Include all launch files in the launch directory
         (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
+        (os.path.join('share', package_name, 'params'), glob('params/*.yaml')),
+        (os.path.join('share', package_name, 'rviz'), glob('rviz/*.rviz')),
+        (os.path.join('share', package_name, 'models'), glob('models/*/*.sdf')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
