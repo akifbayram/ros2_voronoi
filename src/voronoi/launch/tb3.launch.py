@@ -9,18 +9,17 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    model_folder = 'turtlebot3_burger'
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     robot_desc_path = os.path.join(get_package_share_directory("turtlebot3_gazebo"), "urdf", "turtlebot3_burger.urdf")
     world = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'worlds', 'turtlebot3_house.world')
-    urdf_path1 = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'models', model_folder + '_0', 'model.sdf')
-    urdf_path2 = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'models', model_folder + '_1', 'model.sdf')
+    urdf_path1 = os.path.join(get_package_share_directory('voronoi'), 'models/' + 'turtlebot3_burger_0', 'model.sdf')
+    urdf_path2 = os.path.join(get_package_share_directory('voronoi'), 'models/' + 'turtlebot3_burger_1', 'model.sdf')
     with open(robot_desc_path, 'r') as infp:
         robot_desc = infp.read()
     name1 = "tb3_0"
     name2 = "tb3_1"
-    
-    # 1. ROBOT ICIN KODLAR
+
+    # 1. ROBOT 1 LAUNCH NODES
     spawn_robot1 = Node(
         package='gazebo_ros', 
         executable='spawn_entity.py', 
@@ -66,23 +65,37 @@ def generate_launch_description():
             ("/slam_toolbox/graph_visualization", "slam_toolbox/graph_visualization"),
         ],
         output='screen',
-    )  
+    )
+    # nav2_1 = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'bringup_launch.py')
+    #     ),
+    #     launch_arguments={
+    #         'use_sim_time': 'true',
+    #         'autostart': 'true',
+    #         'use_namespace': 'True',
+    #         'namespace': name1,
+    #         'slam': 'True',
+    #         'map': os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'maps', 'turtlebot_world.yaml'),
+    #         'params_file': os.path.join(get_package_share_directory('voronoi'), 'params', 'nav2_multirobot_params_1.yaml')
+    #     }.items()
+    # )
     rviz1 = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
         output='screen',
-        arguments=['-d', os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'config', name1 + '.rviz')]
+        arguments=['-d', os.path.join(get_package_share_directory('voronoi'), 'rviz', name1 + '.rviz')]
     )
     
-    # 2. ROBOT ICIN KODLAR
+    # 2. ROBOT 2 LAUNCH NODES
     spawn_robot2 = Node(
         package='gazebo_ros', 
         executable='spawn_entity.py', 
         arguments=[
             '-entity', name2, 
             '-file', urdf_path2, 
-            '-x', '-4.6', 
+            '-x', '5', 
             '-y', '3.0', 
             '-z', '0.01',
             '-robot_namespace', name2,
@@ -121,16 +134,30 @@ def generate_launch_description():
             ("/slam_toolbox/graph_visualization", "slam_toolbox/graph_visualization"),
         ],
         output='screen',
-    )  
+    # )
+    # nav2_2 = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'bringup_launch.py')
+    #     ),
+    #     launch_arguments={
+    #         'use_sim_time': 'true',
+    #         'autostart': 'true',
+    #         'use_namespace': 'True',
+    #         'namespace': name2,
+    #         'slam': 'True',
+    #         'map': os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'maps', 'turtlebot_world.yaml'),
+    #         'params_file': os.path.join(get_package_share_directory('voronoi'), 'params', 'nav2_multirobot_params_2.yaml')
+    #     }.items()
+    )
     rviz2 = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
         output='screen',
-        arguments=['-d', os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'config', name2 + '.rviz')]
+        arguments=['-d', os.path.join(get_package_share_directory('voronoi'), 'rviz', name2 + '.rviz')]
     )
-    
-    # GAZEBO ICIN KODLAR
+
+    # GAZEBO SERVER AND CLIENT
     gzserver_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')
@@ -145,42 +172,17 @@ def generate_launch_description():
         launch_arguments={'verbose': "true"}.items()
     )    
     
-    # NAV2 Nodes for both robots
-    nav2_node1 = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'bringup_launch.py')
-        ),
-        launch_arguments={
-            'use_sim_time': 'true',
-            'autostart': 'true',
-            'namespace': name1,
-            'map': os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'maps', 'turtlebot_world.yaml')
-        }.items()
-    )
-    
-    nav2_node2 = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'bringup_launch.py')
-        ),
-        launch_arguments={
-            'use_sim_time': 'true',
-            'autostart': 'true',
-            'namespace': name2,
-            'map': os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'maps', 'turtlebot_world.yaml')
-        }.items()
-    )
-    
     ld = LaunchDescription()
-    ld.add_action(nav2_node1)
-    ld.add_action(nav2_node2)
     ld.add_action(gzserver_cmd)
     ld.add_action(gzclient_cmd)
     ld.add_action(spawn_robot1)
     ld.add_action(robot_state_publisher1)
     ld.add_action(async_slam_toolbox1)
+    # ld.add_action(nav2_1)
     ld.add_action(rviz1)
     ld.add_action(spawn_robot2)
     ld.add_action(robot_state_publisher2)
     ld.add_action(async_slam_toolbox2)
+    # ld.add_action(nav2_2)
     ld.add_action(rviz2)
     return ld
