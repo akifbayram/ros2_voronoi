@@ -79,3 +79,7 @@ The launch file `tb4.launch.py` may be modified for one or multiple robots.
     - [Nav2 Stalling on Multiple Robots](https://github.com/ros-navigation/navigation2/issues/4350)
     - [SLAM with namespaced Robots](https://github.com/turtlebot/turtlebot4/issues/159)
     - [gazebo ignition simulation crashes when trying to simulate multiple turtlebot4 ](https://github.com/turtlebot/turtlebot4_simulator/issues/60)
+
+## Acknowledgments
+
+Aspects of the code such as the map merge node, path planning, and following are adapted from the [work](https://github.com/abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot) by [abdulkadrtr](https://github.com/abdulkadrtr).
