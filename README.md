@@ -80,6 +80,14 @@ The launch file `tb4.launch.py` may be modified for one or multiple robots.
     - [SLAM with namespaced Robots](https://github.com/turtlebot/turtlebot4/issues/159)
     - [gazebo ignition simulation crashes when trying to simulate multiple turtlebot4 ](https://github.com/turtlebot/turtlebot4_simulator/issues/60)
 
-## Acknowledgments
 
-Aspects of the code such as the map merge node, path planning, and following are adapted from the [work](https://github.com/abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot) by [abdulkadrtr](https://github.com/abdulkadrtr).
+## **Acknowledgments**
+
+This project draws inspiration and code from the following repositories:
+
+1. [**abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot**](https://github.com/abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot):  
+   For map merging, path planning, following, and obstacle avoidance.
+
+2. [**Connected-and-Autonomous-Systems-Lab/Voronoi**](https://github.com/Connected-and-Autonomous-Systems-Lab/voronoi):  
+   Provides the Voronoi-based exploration algorithm used in this project.  
+   - This repository is itself adapted from [**Peace1997/Voronoi_Based_Multi_Robot_Collaborate_Exploration_Unknow_Enviroment**](https://github.com/Peace1997/Voronoi_Based_Multi_Robot_Collaborate_Exploration_Unknow_Enviroment/tree/master)
