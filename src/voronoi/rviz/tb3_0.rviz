@@ -9,8 +9,6 @@ Panels:
         - /TF1/Frames1
         - /TF1/Tree1
         - /Global Planner1/Global Costmap1
-        - /Frontier1
-        - /MarkerArray2
       Splitter Ratio: 0.5833333134651184
     Tree Height: 351
   - Class: rviz_common/Selection
@@ -258,22 +256,6 @@ Visualization Manager:
         Value: /tb3_0/map_updates
       Use Timestamp: false
       Value: true
-    - Alpha: 1
-      Class: nav2_rviz_plugins/ParticleCloud
-      Color: 0; 180; 0
-      Enabled: true
-      Max Arrow Length: 0.30000001192092896
-      Min Arrow Length: 0.019999999552965164
-      Name: Amcl Particle Swarm
-      Shape: Arrow (Flat)
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Best Effort
-        Value: /tb3_0/particle_cloud
-      Value: true
     - Class: rviz_common/Group
       Displays:
         - Alpha: 0.30000001192092896
@@ -418,18 +400,6 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Controller
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
-      Name: MarkerArray
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /tb3_0/waypoints
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -452,7 +422,6 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /tb3_0/initialpose
-    - Class: nav2_rviz_plugins/GoalTool
   Transformation:
     Current:
       Class: rviz_default_plugins/TF

@@ -9,15 +9,16 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    name1 = "tb3_0"
+    name2 = "tb3_1"
+
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     robot_desc_path = os.path.join(get_package_share_directory("turtlebot3_gazebo"), "urdf", "turtlebot3_burger.urdf")
     world = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'worlds', 'turtlebot3_house.world')
-    urdf_path1 = os.path.join(get_package_share_directory('voronoi'), 'models/' + 'turtlebot3_burger_0', 'model.sdf')
-    urdf_path2 = os.path.join(get_package_share_directory('voronoi'), 'models/' + 'turtlebot3_burger_1', 'model.sdf')
+    urdf_path1 = os.path.join(get_package_share_directory('voronoi'), 'models', name1, 'model.sdf')
+    urdf_path2 = os.path.join(get_package_share_directory('voronoi'), 'models', name2, 'model.sdf')
     with open(robot_desc_path, 'r') as infp:
         robot_desc = infp.read()
-    name1 = "tb3_0"
-    name2 = "tb3_1"
 
     # 1. ROBOT 1 LAUNCH NODES
     spawn_robot1 = Node(
@@ -134,7 +135,7 @@ def generate_launch_description():
             ("/slam_toolbox/graph_visualization", "slam_toolbox/graph_visualization"),
         ],
         output='screen',
-    # )
+    )
     # nav2_2 = IncludeLaunchDescription(
     #     PythonLaunchDescriptionSource(
     #         os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'bringup_launch.py')
@@ -148,7 +149,7 @@ def generate_launch_description():
     #         'map': os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'maps', 'turtlebot_world.yaml'),
     #         'params_file': os.path.join(get_package_share_directory('voronoi'), 'params', 'nav2_multirobot_params_2.yaml')
     #     }.items()
-    )
+    # )
     rviz2 = Node(
         package='rviz2',
         executable='rviz2',

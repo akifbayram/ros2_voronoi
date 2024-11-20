@@ -5,9 +5,9 @@ import os
 package_name = 'voronoi'
 
 model_dirs = [
-    'turtlebot3_burger_0',
-    'turtlebot3_burger_1',
-    'turtlebot3_burger_2'
+    'tb3_0',
+    'tb3_1',
+    'tb3_2'
 ]
 
 model_files = []
