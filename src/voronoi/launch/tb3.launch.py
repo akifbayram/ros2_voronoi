@@ -11,7 +11,8 @@ from launch_ros.actions import Node
 def generate_launch_description():
     name1 = "tb3_0"
     name2 = "tb3_1"
-
+    
+    merge_map_launch_path = os.path.join(get_package_share_directory('merge_map'), 'launch', 'merge_map_launch.py')
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     robot_desc_path = os.path.join(get_package_share_directory("turtlebot3_gazebo"), "urdf", "turtlebot3_burger.urdf")
     world = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'worlds', 'turtlebot3_house.world')
@@ -172,6 +173,12 @@ def generate_launch_description():
         ),
         launch_arguments={'verbose': "true"}.items()
     )    
+
+    # MAP MERGE
+    merge_map_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(merge_map_launch_path),
+        launch_arguments={}.items()
+    )
     
     ld = LaunchDescription()
     ld.add_action(gzserver_cmd)
@@ -186,4 +193,5 @@ def generate_launch_description():
     ld.add_action(async_slam_toolbox2)
     # ld.add_action(nav2_2)
     ld.add_action(rviz2)
+    ld.add_action(merge_map_cmd)
     return ld
