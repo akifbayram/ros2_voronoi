@@ -71,6 +71,7 @@ class MultiRobotExplorer(Node):
         # Shared state
         self.map_data = None
         self.exploration_complete = False
+        self.stop_commands_sent = False  # Initialize the stop command flag
         self.start_time = None
         self.no_frontier_threshold = 5
         self.last_map_update_time = self.get_clock().now()
@@ -322,15 +323,20 @@ class MultiRobotExplorer(Node):
                     twist.angular.z = 0.0
                     self.cmd_vel_pubs[namespace].publish(twist)
                     self.get_logger().info(f'Robot {namespace} reached its goal.')
+
+                    # **Extract goal coordinates before setting to None**
+                    goal_x, goal_y = robot.current_goal
+
+                    # **Set robot's state to indicate it has reached the goal**
                     robot.is_goal_active = False
                     robot.frontier = None
                     robot.current_goal = None
                     robot.planned_path = []
                     robot.path_index = 0
 
-                    # Publish the reached goal marker
-                    self.publish_goal_marker(namespace, robot.current_goal[0], robot.current_goal[1])
-                    self.create_goal_marker(namespace, robot.current_goal[0], robot.current_goal[1])
+                    # **Publish the reached goal marker using the extracted coordinates**
+                    self.publish_goal_marker(namespace, goal_x, goal_y)
+                    self.create_goal_marker(namespace, goal_x, goal_y)
                     self.publish_goal_markers(namespace)
 
                     # Introduce a delay to wait for the map to update
@@ -610,10 +616,6 @@ class MultiRobotExplorer(Node):
             self.get_logger().debug('Waiting for map data...')
             return
 
-        if self.exploration_complete:
-            self.get_logger().debug('Exploration already completed.')
-            return
-
         try:
             if self.start_time is None:
                 self.start_time = time.perf_counter()
@@ -680,9 +682,21 @@ class MultiRobotExplorer(Node):
                         self.get_logger().info(
                             'Multi-robot exploration completed after multiple checks with no frontiers!'
                         )
+                        break  # Exit the loop as exploration is complete
             else:
                 for robot in self.robots.values():
                     robot.no_frontier_counter = 0  # Reset counter if frontiers are found
+
+            # Handle exploration completion and stopping robots
+            if self.exploration_complete and not self.stop_commands_sent:
+                # Check if all robots have reached their goals
+                all_reached_goals = all(not robot.is_goal_active for robot in self.robots.values())
+                if all_reached_goals:
+                    self.get_logger().info('All robots have reached their goals. Sending stop commands.')
+                    self.stop_all_robots()
+                    self.stop_commands_sent = True
+                else:
+                    self.get_logger().info('Exploration complete, waiting for robots to reach their goals.')
 
         except Exception as e:
             self.get_logger().error(f'Error in exploration loop: {str(e)}')
@@ -744,6 +758,8 @@ class MultiRobotExplorer(Node):
             pose.pose.position.y = p.y
             pose.pose.position.z = p.z
             pose.pose.orientation.w = 1.0 
+            # line color
+
             poses.append(pose)
         path_msg.poses = poses
         self.robot_path_pubs[namespace].publish(path_msg)
@@ -775,6 +791,21 @@ class MultiRobotExplorer(Node):
         marker_array = MarkerArray()
         marker_array.markers = self.robots[namespace].goals_history
         self.goals_marker_pubs[namespace].publish(marker_array)
+
+    def stop_all_robots(self):
+        """Send zero velocities to all robots to stop them."""
+        self.get_logger().info('Stopping all robots...')
+        stop_twist = Twist()
+        stop_twist.linear.x = 0.0
+        stop_twist.linear.y = 0.0
+        stop_twist.linear.z = 0.0
+        stop_twist.angular.x = 0.0
+        stop_twist.angular.y = 0.0
+        stop_twist.angular.z = 0.0
+        
+        for namespace, cmd_vel_pub in self.cmd_vel_pubs.items():
+            cmd_vel_pub.publish(stop_twist)
+            self.get_logger().info(f'Sent stop command to {namespace}')
 
 def main(args=None):
     rclpy.init(args=args)
