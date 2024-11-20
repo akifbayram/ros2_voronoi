@@ -44,6 +44,7 @@ class MultiRobotExplorer(Node):
         # Parameters
         self.declare_parameter('robot_namespaces', ['tb3_0', 'tb3_1'])
         self.declare_parameter('information_node_radius', 2.0)
+        self.declare_parameter('expansion_size', 4)  # Declare expansion_size parameter
         self.lambda_value = 0.7
         self.min_frontier_size = 3
         self.min_distance_threshold = 0.5
@@ -51,9 +52,10 @@ class MultiRobotExplorer(Node):
         self.lookahead_distance = 0.15
         self.speed = 0.1  # Adjusted speed to match the first code block
 
-        # Get robot namespaces
+        # Get parameters
         self.robot_namespaces = self.get_parameter('robot_namespaces').value
         self.information_node_radius = self.get_parameter('information_node_radius').value
+        self.expansion_size = self.get_parameter('expansion_size').value  # Get expansion_size value
         self.get_logger().info(f'Configured for robots: {self.robot_namespaces}')
 
         # Initialize robot states
@@ -236,24 +238,15 @@ class MultiRobotExplorer(Node):
     def bspline_planning(self, path, sn=100):
         try:
             array = np.array(path)
+            if array.shape[0] < 4:
+                # Not enough points for B-spline, return original path
+                return path
             x = array[:, 0]
             y = array[:, 1]
-            N = 2
-            t = range(len(x))
-            x_tup = si.splrep(t, x, k=N)
-            y_tup = si.splrep(t, y, k=N)
-
-            x_list = list(x_tup)
-            xl = x.tolist()
-            x_list[1] = xl + [0.0, 0.0, 0.0, 0.0]
-
-            y_list = list(y_tup)
-            yl = y.tolist()
-            y_list[1] = yl + [0.0, 0.0, 0.0, 0.0]
-
-            ipl_t = np.linspace(0.0, len(x) - 1, sn)
-            rx = si.splev(ipl_t, x_list)
-            ry = si.splev(ipl_t, y_list)
+            N = 3  # Degree of the spline
+            tck, u = si.splprep([x, y], s=0, k=min(N, len(x)-1))
+            u_new = np.linspace(0, 1, sn)
+            rx, ry = si.splev(u_new, tck)
             path = [(rx[i], ry[i]) for i in range(len(rx))]
         except Exception as e:
             self.get_logger().error(f'B-spline planning error: {str(e)}')
@@ -323,21 +316,17 @@ class MultiRobotExplorer(Node):
                     twist.angular.z = 0.0
                     self.cmd_vel_pubs[namespace].publish(twist)
                     self.get_logger().info(f'Robot {namespace} reached its goal.')
-
-                    # **Extract goal coordinates before setting to None**
-                    goal_x, goal_y = robot.current_goal
-
-                    # **Set robot's state to indicate it has reached the goal**
                     robot.is_goal_active = False
                     robot.frontier = None
                     robot.current_goal = None
                     robot.planned_path = []
                     robot.path_index = 0
 
-                    # **Publish the reached goal marker using the extracted coordinates**
-                    self.publish_goal_marker(namespace, goal_x, goal_y)
-                    self.create_goal_marker(namespace, goal_x, goal_y)
-                    self.publish_goal_markers(namespace)
+                    # Publish the reached goal marker
+                    if robot.current_goal:
+                        self.publish_goal_marker(namespace, robot.current_goal[0], robot.current_goal[1])
+                        self.create_goal_marker(namespace, robot.current_goal[0], robot.current_goal[1])
+                        self.publish_goal_markers(namespace)
 
                     # Introduce a delay to wait for the map to update
                     robot.waiting_for_map_update = True
@@ -572,11 +561,14 @@ class MultiRobotExplorer(Node):
         height = self.map_data.info.height
 
         map_array = np.array(self.map_data.data).reshape((height, width))
-        # Occupied cells are marked with 100, unknown with -1
+
+        # Expand obstacles using the costmap function
+        expanded_map_array = self.costmap(map_array, width, height, self.expansion_size)
+
         # For path planning, we consider occupied cells as 1 and free cells as 0
-        obstacle_map = np.zeros_like(map_array)
-        obstacle_map[map_array == 100] = 1
-        obstacle_map[map_array == -1] = 1  # Treat unknown as obstacles
+        obstacle_map = np.zeros_like(expanded_map_array)
+        obstacle_map[expanded_map_array == 100] = 1
+        obstacle_map[expanded_map_array == -1] = 1  # Treat unknown as obstacles
 
         # Convert robot position and goal to map indices
         start_x = int((robot.position.x - origin_x) / resolution)
@@ -758,8 +750,6 @@ class MultiRobotExplorer(Node):
             pose.pose.position.y = p.y
             pose.pose.position.z = p.z
             pose.pose.orientation.w = 1.0 
-            # line color
-
             poses.append(pose)
         path_msg.poses = poses
         self.robot_path_pubs[namespace].publish(path_msg)
@@ -806,6 +796,22 @@ class MultiRobotExplorer(Node):
         for namespace, cmd_vel_pub in self.cmd_vel_pubs.items():
             cmd_vel_pub.publish(stop_twist)
             self.get_logger().info(f'Sent stop command to {namespace}')
+
+    # Costmap Function
+    def costmap(self, data, width, height, expansion_size):
+        """Expand obstacles in the map by a given expansion size."""
+        data = np.array(data).reshape(height, width)
+        wall = np.where(data == 100)
+        for i in range(-expansion_size, expansion_size + 1):
+            for j in range(-expansion_size, expansion_size + 1):
+                if i == 0 and j == 0:
+                    continue
+                x = wall[0] + i
+                y = wall[1] + j
+                x = np.clip(x, 0, height - 1)
+                y = np.clip(y, 0, width - 1)
+                data[x, y] = 100
+        return data
 
 def main(args=None):
     rclpy.init(args=args)
