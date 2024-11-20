@@ -22,37 +22,60 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    # Get the urdf file
-    TURTLEBOT3_MODEL = os.environ['TURTLEBOT3_MODEL']
-    model_folder = 'turtlebot3_' + TURTLEBOT3_MODEL
-    urdf_path = os.path.join(
-        get_package_share_directory('turtlebot3_gazebo'),
-        'models',
-        model_folder,
-        'model.sdf'
-    )
+    # Robot names
+    name1 = "tb3_0"
+    name2 = "tb3_1"
+
+    # Get the new model paths
+    urdf_path1 = os.path.join(get_package_share_directory('voronoi'), 'models', name1, 'model.sdf')
+    urdf_path2 = os.path.join(get_package_share_directory('voronoi'), 'models', name2, 'model.sdf')
 
     # Launch configuration variables specific to simulation
-    x_pose = LaunchConfiguration('x_pose', default='0.0')
-    y_pose = LaunchConfiguration('y_pose', default='0.0')
+    x_pose1 = LaunchConfiguration('x_pose1', default='0.0')
+    y_pose1 = LaunchConfiguration('y_pose1', default='0.0')
+    x_pose2 = LaunchConfiguration('x_pose2', default='2.0')
+    y_pose2 = LaunchConfiguration('y_pose2', default='0.0')
 
     # Declare the launch arguments
-    declare_x_position_cmd = DeclareLaunchArgument(
-        'x_pose', default_value='0.0',
-        description='Specify namespace of the robot')
+    declare_x_position_cmd1 = DeclareLaunchArgument(
+        'x_pose1', default_value='0.0',
+        description='Specify x position of robot 1')
 
-    declare_y_position_cmd = DeclareLaunchArgument(
-        'y_pose', default_value='0.0',
-        description='Specify namespace of the robot')
+    declare_y_position_cmd1 = DeclareLaunchArgument(
+        'y_pose1', default_value='0.0',
+        description='Specify y position of robot 1')
 
-    start_gazebo_ros_spawner_cmd = Node(
+    declare_x_position_cmd2 = DeclareLaunchArgument(
+        'x_pose2', default_value='2.0',
+        description='Specify x position of robot 2')
+
+    declare_y_position_cmd2 = DeclareLaunchArgument(
+        'y_pose2', default_value='0.0',
+        description='Specify y position of robot 2')
+
+    # Node to spawn robot 1
+    start_gazebo_ros_spawner_cmd1 = Node(
         package='gazebo_ros',
         executable='spawn_entity.py',
         arguments=[
-            '-entity', TURTLEBOT3_MODEL,
-            '-file', urdf_path,
-            '-x', x_pose,
-            '-y', y_pose,
+            '-entity', name1,
+            '-file', urdf_path1,
+            '-x', x_pose1,
+            '-y', y_pose1,
+            '-z', '0.01'
+        ],
+        output='screen',
+    )
+
+    # Node to spawn robot 2
+    start_gazebo_ros_spawner_cmd2 = Node(
+        package='gazebo_ros',
+        executable='spawn_entity.py',
+        arguments=[
+            '-entity', name2,
+            '-file', urdf_path2,
+            '-x', x_pose2,
+            '-y', y_pose2,
             '-z', '0.01'
         ],
         output='screen',
@@ -61,10 +84,13 @@ def generate_launch_description():
     ld = LaunchDescription()
 
     # Declare the launch options
-    ld.add_action(declare_x_position_cmd)
-    ld.add_action(declare_y_position_cmd)
+    ld.add_action(declare_x_position_cmd1)
+    ld.add_action(declare_y_position_cmd1)
+    ld.add_action(declare_x_position_cmd2)
+    ld.add_action(declare_y_position_cmd2)
 
     # Add any conditioned actions
-    ld.add_action(start_gazebo_ros_spawner_cmd)
+    ld.add_action(start_gazebo_ros_spawner_cmd1)
+    ld.add_action(start_gazebo_ros_spawner_cmd2)
 
     return ld
