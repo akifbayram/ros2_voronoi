@@ -62,7 +62,14 @@ The launch file `tb4.launch.py` may be modified for one or multiple robots.
    ros2 launch voronoi tb3.launch.py
    ```
 
-2. **Start Exploration**:
+2. **Start Map Merge Node**:
+   ```bash
+   cd ~/ros2_voronoi && 
+   . install/setup.bash && 
+   ros2 launch merge_map merge_map_launch.py 
+   ```
+
+3. **Start Exploration**:
    ```bash
    source /etc/turtlebot4/setup.bash
    cd ~/ros2_voronoi
