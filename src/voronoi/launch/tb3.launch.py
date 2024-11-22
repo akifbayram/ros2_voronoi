@@ -16,6 +16,7 @@ def generate_launch_description():
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     robot_desc_path = os.path.join(get_package_share_directory("turtlebot3_gazebo"), "urdf", "turtlebot3_burger.urdf")
     world = os.path.join(get_package_share_directory('turtlebot3_gazebo'), 'worlds', 'turtlebot3_house.world')
+    world = os.path.join(get_package_share_directory('voronoi'), 'worlds', 'simple_env_1.world')
     urdf_path1 = os.path.join(get_package_share_directory('voronoi'), 'models', name1, 'model.sdf')
     urdf_path2 = os.path.join(get_package_share_directory('voronoi'), 'models', name2, 'model.sdf')
     with open(robot_desc_path, 'r') as infp:
@@ -28,8 +29,8 @@ def generate_launch_description():
         arguments=[
             '-entity', name1, 
             '-file', urdf_path1, 
-            '-x', '5.0', 
-            '-y', '2.5', 
+            '-x', '-3', 
+            '-y', '-2', 
             '-z', '0.01',
             '-robot_namespace', name1,
         ],
@@ -97,8 +98,8 @@ def generate_launch_description():
         arguments=[
             '-entity', name2, 
             '-file', urdf_path2, 
-            '-x', '5', 
-            '-y', '3.0', 
+            '-x', '-3', 
+            '-y', '-1', 
             '-z', '0.01',
             '-robot_namespace', name2,
         ],
