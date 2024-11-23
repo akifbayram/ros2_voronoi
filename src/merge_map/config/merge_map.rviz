@@ -4,9 +4,8 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
-        - /Map1
         - /tb3_01
+        - /tb3_11
       Splitter Ratio: 0.5
     Tree Height: 1286
   - Class: rviz_common/Selection
@@ -48,6 +47,20 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: false
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Tree:
+        {}
+      Update Interval: 0
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz_default_plugins/Map
       Color Scheme: map
@@ -103,7 +116,7 @@ Visualization Manager:
           Enabled: true
           Name: tb3_0 Current Goal
           Namespaces:
-            goal: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -144,7 +157,7 @@ Visualization Manager:
           Enabled: true
           Name: tb3_0 Previous Goals
           Namespaces:
-            goal: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -153,6 +166,65 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /tb3_0/goals_history
           Value: true
+        - Alpha: 1
+          Class: rviz_default_plugins/RobotModel
+          Collision Enabled: false
+          Description File: ""
+          Description Source: Topic
+          Description Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /tb3_0/robot_description
+          Enabled: true
+          Links:
+            All Links Enabled: true
+            Expand Joint Details: false
+            Expand Link Details: false
+            Expand Tree: false
+            Link Tree Style: Links in Alphabetic Order
+            tb3_0/base_footprint:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            tb3_0/base_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            tb3_0/base_scan:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            tb3_0/caster_back_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            tb3_0/imu_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            tb3_0/wheel_left_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            tb3_0/wheel_right_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+          Mass Properties:
+            Inertia: false
+            Mass: false
+          Name: RobotModel
+          TF Prefix: ""
+          Update Interval: 0
+          Value: true
+          Visual Enabled: true
       Enabled: true
       Name: tb3_0
     - Class: rviz_common/Group
@@ -189,7 +261,7 @@ Visualization Manager:
           Enabled: true
           Name: tb3_1 Current Goal
           Namespaces:
-            goal: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -202,7 +274,7 @@ Visualization Manager:
           Enabled: true
           Name: tb3_1 Previous Goals
           Namespaces:
-            goal: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -211,72 +283,67 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /tb3_1/goals_history
           Value: true
+        - Alpha: 1
+          Class: rviz_default_plugins/RobotModel
+          Collision Enabled: false
+          Description File: ""
+          Description Source: Topic
+          Description Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /tb3_1/robot_description
+          Enabled: true
+          Links:
+            All Links Enabled: true
+            Expand Joint Details: false
+            Expand Link Details: false
+            Expand Tree: false
+            Link Tree Style: Links in Alphabetic Order
+            tb3_1/base_footprint:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            tb3_1/base_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            tb3_1/base_scan:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            tb3_1/caster_back_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            tb3_1/imu_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            tb3_1/wheel_left_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            tb3_1/wheel_right_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+          Mass Properties:
+            Inertia: false
+            Mass: false
+          Name: RobotModel
+          TF Prefix: ""
+          Update Interval: 0
+          Value: true
+          Visual Enabled: true
       Enabled: true
       Name: tb3_1
-    - Class: rviz_default_plugins/TF
-      Enabled: true
-      Frame Timeout: 15
-      Frames:
-        All Enabled: true
-        map:
-          Value: true
-        tb3_0/base_footprint:
-          Value: true
-        tb3_0/base_link:
-          Value: true
-        tb3_0/base_scan:
-          Value: true
-        tb3_0/caster_back_link:
-          Value: true
-        tb3_0/imu_link:
-          Value: true
-        tb3_0/map:
-          Value: true
-        tb3_0/odom:
-          Value: true
-        tb3_1/base_footprint:
-          Value: true
-        tb3_1/base_link:
-          Value: true
-        tb3_1/base_scan:
-          Value: true
-        tb3_1/caster_back_link:
-          Value: true
-        tb3_1/imu_link:
-          Value: true
-        tb3_1/map:
-          Value: true
-        tb3_1/odom:
-          Value: true
-      Marker Scale: 1
-      Name: TF
-      Show Arrows: true
-      Show Axes: true
-      Show Names: false
-      Tree:
-        map:
-          tb3_0/map:
-            tb3_0/odom:
-              tb3_0/base_footprint:
-                tb3_0/base_link:
-                  tb3_0/base_scan:
-                    {}
-                  tb3_0/caster_back_link:
-                    {}
-                  tb3_0/imu_link:
-                    {}
-          tb3_1/map:
-            tb3_1/odom:
-              tb3_1/base_footprint:
-                tb3_1/base_link:
-                  tb3_1/base_scan:
-                    {}
-                  tb3_1/caster_back_link:
-                    {}
-                  tb3_1/imu_link:
-                    {}
-      Update Interval: 0
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
