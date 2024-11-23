@@ -6,7 +6,7 @@ import numpy as np
 def merge_maps(map1, map2):
     merged_map = OccupancyGrid()
     merged_map.header = map1.header
-    merged_map.header.frame_id = 'merge_map'
+    merged_map.header.frame_id = 'map'
     min_x = min(map1.info.origin.position.x, map2.info.origin.position.x)
     min_y = min(map1.info.origin.position.y, map2.info.origin.position.y)
     max_x = max(map1.info.origin.position.x + (map1.info.width * map1.info.resolution),
@@ -39,7 +39,7 @@ def merge_maps(map1, map2):
 class MergeMapNode(Node):
     def __init__(self):
         super().__init__('merge_map_node')
-        self.publisher = self.create_publisher(OccupancyGrid, '/merge_map', 10)
+        self.publisher = self.create_publisher(OccupancyGrid, '/map', 10)
         self.subscription = self.create_subscription(OccupancyGrid, '/tb3_0/map', self.map1_callback, 10)
         self.subscription = self.create_subscription(OccupancyGrid, '/tb3_1/map', self.map2_callback, 10)
         self.map1 = None
