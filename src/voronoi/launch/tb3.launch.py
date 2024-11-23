@@ -48,7 +48,7 @@ def generate_launch_description():
         arguments=[
             '-entity', name1, 
             '-file', urdf_path1, 
-            '-x', '-3', 
+            '-x', '-2.5', 
             '-y', '-2', 
             '-z', '0.01',
             '-robot_namespace', name1,
@@ -81,6 +81,8 @@ def generate_launch_description():
             'map_frame': name1 + '/map',
             'minimum_travel_distance': 0.3,
             'minimum_travel_heading': 0.3,
+            'map_update_interval': 1.0,
+            'publish_period': 1.0,
             'resolution': 0.05,
         }],
         remappings=[
@@ -120,7 +122,7 @@ def generate_launch_description():
         arguments=[
             '-entity', name2, 
             '-file', urdf_path2, 
-            '-x', '-3', 
+            '-x', '-2.5', 
             '-y', '-1', 
             '-z', '0.01',
             '-robot_namespace', name2,
@@ -153,6 +155,8 @@ def generate_launch_description():
             'map_frame': name2 + '/map',
             'minimum_travel_distance': 0.3,
             'minimum_travel_heading': 0.3,
+            'map_update_interval': 1.0,
+            'publish_period': 1.0,
             'resolution': 0.05,
         }],
         remappings=[
