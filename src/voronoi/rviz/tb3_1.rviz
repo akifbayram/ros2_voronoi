@@ -9,6 +9,7 @@ Panels:
         - /TF1/Frames1
         - /TF1/Tree1
         - /Global Planner1/Global Costmap1
+        - /GridCells1
       Splitter Ratio: 0.5833333134651184
     Tree Height: 1331
   - Class: rviz_common/Selection
@@ -507,6 +508,32 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /tb3_1/goals_markers
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Current Goal
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /tb3_1/goal_marker
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/GridCells
+      Color: 25; 255; 0
+      Enabled: true
+      Name: GridCells
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /tb3_1/voronoi_partition
       Value: true
   Enabled: true
   Global Options:
