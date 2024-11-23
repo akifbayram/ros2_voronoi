@@ -235,7 +235,7 @@ def generate_launch_description():
     ld.add_action(robot_state_publisher1)
     ld.add_action(async_slam_toolbox1)
     # ld.add_action(nav2_1)
-    ld.add_action(rviz1)
+    # ld.add_action(rviz1)
     ld.add_action(spawn_robot2)
     ld.add_action(robot_state_publisher2)
     ld.add_action(async_slam_toolbox2)
