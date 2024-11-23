@@ -19,8 +19,27 @@ def generate_launch_description():
     world = os.path.join(get_package_share_directory('voronoi'), 'worlds', 'simple_env_1.world')
     urdf_path1 = os.path.join(get_package_share_directory('voronoi'), 'models', name1, 'model.sdf')
     urdf_path2 = os.path.join(get_package_share_directory('voronoi'), 'models', name2, 'model.sdf')
+
+    def add_prefix_to_urdf(urdf_text, prefix):
+        import re
+        # Add prefix to link names
+        urdf_text = re.sub(r'(<link\s+name=\")([^\"]+)\"', r'\1' + prefix + r'\2"', urdf_text)
+        # Add prefix to joint names
+        urdf_text = re.sub(r'(<joint\s+name=\")([^\"]+)\"', r'\1' + prefix + r'\2"', urdf_text)
+        # Add prefix to parent and child in joints
+        urdf_text = re.sub(r'(<parent\s+link=\")([^\"]+)\"', r'\1' + prefix + r'\2"', urdf_text)
+        urdf_text = re.sub(r'(<child\s+link=\")([^\"]+)\"', r'\1' + prefix + r'\2"', urdf_text)
+        return urdf_text
+
+    # Read and modify URDF for Robot 1
     with open(robot_desc_path, 'r') as infp:
-        robot_desc = infp.read()
+        robot_desc1 = infp.read()
+    robot_desc1 = add_prefix_to_urdf(robot_desc1, name1 + '/')
+
+    # Read and modify URDF for Robot 2
+    with open(robot_desc_path, 'r') as infp:
+        robot_desc2 = infp.read()
+    robot_desc2 = add_prefix_to_urdf(robot_desc2, name2 + '/')
 
     # 1. ROBOT 1 LAUNCH NODES
     spawn_robot1 = Node(
@@ -36,16 +55,19 @@ def generate_launch_description():
         ],
         output='screen'
     )
+
     robot_state_publisher1 = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         name='robot_state_publisher',
         namespace=name1,
         output='screen',
-        parameters=[{'frame_prefix': name1 + '/',
-                    'use_sim_time': True,
-                    'robot_description': robot_desc}]
+        parameters=[{
+            'use_sim_time': True,
+            'robot_description': robot_desc1
+        }]
     )
+
     async_slam_toolbox1 = Node(
         package='slam_toolbox',
         executable='async_slam_toolbox_node',
@@ -105,16 +127,19 @@ def generate_launch_description():
         ],
         output='screen'
     )
+
     robot_state_publisher2 = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         name='robot_state_publisher',
         namespace=name2,
         output='screen',
-        parameters=[{'frame_prefix': name2 + '/',
-                    'use_sim_time': True,
-                    'robot_description': robot_desc}]
+        parameters=[{
+            'use_sim_time': True,
+            'robot_description': robot_desc2
+        }]
     )
+    
     async_slam_toolbox2 = Node(
         package='slam_toolbox',
         executable='async_slam_toolbox_node',
@@ -180,7 +205,25 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(merge_map_launch_path),
         launch_arguments={}.items()
     )
-    
+        # For Robot 1
+    static_transform_publisher1 = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='map_to_' + name1,
+        arguments=['0', '0', '0', '0', '0', '0', 'map', name1 + '/map'],
+        output='screen'
+    )
+
+    # For Robot 2
+    static_transform_publisher2 = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='map_to_' + name2,
+        arguments=['0', '0', '0', '0', '0', '0', 'map', name2 + '/map'],
+        output='screen'
+    )
+
+    # Add to LaunchDescription
     ld = LaunchDescription()
     ld.add_action(gzserver_cmd)
     ld.add_action(gzclient_cmd)
@@ -193,6 +236,8 @@ def generate_launch_description():
     ld.add_action(robot_state_publisher2)
     ld.add_action(async_slam_toolbox2)
     # ld.add_action(nav2_2)
-    ld.add_action(rviz2)
+    # ld.add_action(rviz2)
     ld.add_action(merge_map_cmd)
+    ld.add_action(static_transform_publisher1)
+    ld.add_action(static_transform_publisher2)
     return ld
