@@ -18,8 +18,9 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 # Parameters for navigation
 LOOKAHEAD_DISTANCE = 0.25
-SPEED = 0.1
-EXPANSION_SIZE = 0  # For obstacle expansion in the map
+SPEED = 0.15
+EXPANSION_SIZE = 1 # For obstacle expansion in the map
+LAMBDA_VALUE = 0.5
 
 def euler_from_quaternion_func(x, y, z, w):
     t0 = +2.0 * (w * x + y * z)
@@ -196,7 +197,8 @@ class Robot:
         self.laser_msg_range_max = None
         self.laser_values = None
         self.laser_msg = None
-
+        self.record_info_node = [ (self.position.x, self.position.y) ]
+        
         self.other_robots_positions = other_robots_positions  # Shared among robots
         self.lock = lock  # For thread-safe access to shared data
 
@@ -278,15 +280,20 @@ class Robot:
         # Main control loop
         # Check for potential collisions
         if self.laser_values:
+            obstacle_detected = False
             for distance in self.laser_values:
                 if distance < 0.2:
-                    self.laser_crashed_value = True
-                    twist = Twist()
-                    twist.linear.x = 0.0
-                    twist.angular.z = 0.0
-                    self.cmd_vel_pub.publish(twist)
-                    self.node.get_logger().warn(f"{self.robot_name}: Obstacle detected within 0.2 meters. Stopping.")
-                    return
+                    obstacle_detected = True
+                    break
+            if obstacle_detected:
+                self.laser_crashed_value = True
+                twist = Twist()
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+                self.cmd_vel_pub.publish(twist)
+                self.node.get_logger().warn(f"{self.robot_name}: Obstacle detected within 0.2 meters. Stopping.")
+                # Optionally, implement avoidance or re-planning here instead of stopping
+                return
         else:
             self.node.get_logger().debug(f"{self.robot_name}: No laser data available.")
 
@@ -329,7 +336,8 @@ class Robot:
             # Use Voronoi algorithm
             voronoi_points = self.voronoi_select_point(option_target_point)
             if voronoi_points:
-                self.next_target_node = random.choice(voronoi_points)
+                # Use Min-Omega heuristic to select the next target
+                self.next_target_node = self.get_min_Omega_distance_point(voronoi_points)
                 self.record_info_node.append(self.next_target_node)
                 self.node.get_logger().info(f"{self.robot_name}: New target position selected at ({self.next_target_node[0]}, {self.next_target_node[1]})")
                 self.arr_info_node = False
@@ -343,7 +351,8 @@ class Robot:
             else:
                 self.node.get_logger().warning(f"{self.robot_name}: No valid Voronoi points found. Using all option points.")
                 if option_target_point:
-                    self.next_target_node = random.choice(option_target_point)
+                    # Use Min-Omega heuristic on all option points
+                    self.next_target_node = self.get_min_Omega_distance_point(option_target_point)
                     self.record_info_node.append(self.next_target_node)
                     self.node.get_logger().info(f"{self.robot_name}: New target position selected at ({self.next_target_node[0]}, {self.next_target_node[1]})")
                     self.arr_info_node = False
@@ -358,6 +367,35 @@ class Robot:
                     self.node.get_logger().error(f"{self.robot_name}: No option target points available from laser scan.")
         else:
             self.node.get_logger().warning(f"{self.robot_name}: Waiting for laser scan data to generate target points.")
+
+    def get_min_Omega_distance_point(self, option_target_points):
+        """
+        Use Min-Omega heuristic to select the best target point.
+        """
+        min_Omega = float('inf')
+        best_point = None
+        # Last target position
+        if len(self.record_info_node) >= 1:
+            last_target = self.record_info_node[-1]
+        else:
+            # If no previous target, use current position
+            last_target = (self.position.x, self.position.y)
+        for point in option_target_points:
+            # Distance between last target and candidate point (d_ik)
+            d_ik = math.hypot(point[0] - last_target[0], point[1] - last_target[1])
+            # Distance between current position and candidate point (phi_ik)
+            phi_ik = math.hypot(point[0] - self.position.x, point[1] - self.position.y)
+            # Calculate Omega
+            Omega = LAMBDA_VALUE * d_ik + (1 - LAMBDA_VALUE) * phi_ik
+            self.node.get_logger().debug(f"{self.robot_name}: Omega for point ({point[0]}, {point[1]}): {Omega}")
+            if Omega < min_Omega:
+                min_Omega = Omega
+                best_point = point
+        if best_point is None:
+            self.node.get_logger().error(f"{self.robot_name}: No valid point found using Min-Omega heuristic.")
+            # Fallback to a random point
+            best_point = random.choice(option_target_points)
+        return best_point
 
     def voronoi_select_point(self, option_target_point):
         # Implement Voronoi selection based on other robots' positions
@@ -389,6 +427,21 @@ class Robot:
             if distance < 0.5:
                 return True
         return False
+        
+    def find_nearest_free_cell(self, map_array, y, x, search_radius=5):
+        """
+        Find the nearest free cell to the given (y, x) position within the search_radius.
+        Returns the (y, x) tuple of the nearest free cell or None if not found.
+        """
+        for radius in range(1, search_radius + 1):
+            for dy in range(-radius, radius + 1):
+                for dx in range(-radius, radius + 1):
+                    new_y = y + dy
+                    new_x = x + dx
+                    if 0 <= new_y < map_array.shape[0] and 0 <= new_x < map_array.shape[1]:
+                        if map_array[new_y][new_x] == 0:
+                            return (new_y, new_x)
+        return None
 
     def plan_path(self):
         # Use A* to plan path to next_target_node
@@ -452,12 +505,28 @@ class Robot:
         if not (0 <= target_y_index < map_array.shape[0] and 0 <= target_x_index < map_array.shape[1]):
             self.node.get_logger().error(f"{self.robot_name}: Target position indices out of map bounds.")
             return
+
+        # Handle current position inside an obstacle
         if map_array[current_y_index][current_x_index] == 1:
-            self.node.get_logger().error(f"{self.robot_name}: Current position is inside an obstacle.")
-            return
+            self.node.get_logger().warn(f"{self.robot_name}: Current position is inside an obstacle. Attempting to find the nearest free cell.")
+            nearest_free = self.find_nearest_free_cell(map_array, current_y_index, current_x_index)
+            if nearest_free:
+                current_y_index, current_x_index = nearest_free
+                self.node.get_logger().info(f"{self.robot_name}: Nearest free cell found at ({current_y_index}, {current_x_index}).")
+            else:
+                self.node.get_logger().error(f"{self.robot_name}: No free cell found near the current position.")
+                return
+
+        # Handle target position inside an obstacle
         if map_array[target_y_index][target_x_index] == 1:
-            self.node.get_logger().error(f"{self.robot_name}: Target position is inside an obstacle.")
-            return
+            self.node.get_logger().warn(f"{self.robot_name}: Target position is inside an obstacle. Attempting to find the nearest free cell.")
+            nearest_free = self.find_nearest_free_cell(map_array, target_y_index, target_x_index)
+            if nearest_free:
+                target_y_index, target_x_index = nearest_free
+                self.node.get_logger().info(f"{self.robot_name}: Nearest free cell found for target at ({target_y_index}, {target_x_index}).")
+            else:
+                self.node.get_logger().error(f"{self.robot_name}: No free cell found near the target position.")
+                return
 
         path_indices = astar(map_array, (current_y_index, current_x_index), (target_y_index, target_x_index), self.node.get_logger())
 
@@ -470,6 +539,7 @@ class Robot:
             self.publish_planned_path(self.path)
         else:
             self.node.get_logger().error(f"{self.robot_name}: Path planning failed using A*.")
+
 
     def is_path_obstructed(self):
         # Check if there are obstacles ahead along the path
@@ -538,6 +608,7 @@ class Robot:
             self.arrived = True
             self.path = []
             self.node.get_logger().info(f"{self.robot_name}: Completed path following.")
+
 
     def publish_planned_path(self, path):
         """Publish the planned path for this robot."""
