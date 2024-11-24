@@ -9,9 +9,7 @@
 
 This project aims to use a Voronoi-partition-based exploration algorithm to enable multiple robots to autonomously navigate and explore an environment, generating a map through TurtleBot simulations.
 
-<video width="640" controls>
-  <source src="media/voronoi_tb3_2.mp4" type="video/mp4">
-</video>
+<img src="media/voronoi_tb3_3.gif" width="640"/>
 
 ---
 
@@ -42,7 +40,7 @@ colcon build
    ```bash
    cd ~/ros2_voronoi
    . install/setup.bash
-   ros2 launch voronoi tb3.launch.py
+   ros2 launch voronoi tb3.launch.py robot_count:=3
    ```
 
 2. **Start Exploration**:
