@@ -18,7 +18,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 LOOKAHEAD_DISTANCE = 0.25
 SPEED = 0.15
 EXPANSION_SIZE = 1  # For obstacle expansion in the map
-LAMBDA_VALUE = 0.5
+LAMBDA_VALUE = 0.8
 
 def euler_from_quaternion_func(x, y, z, w):
     t0 = +2.0 * (w * x + y * z)
@@ -162,12 +162,10 @@ def pure_pursuit(current_x, current_y, current_heading, path, index, lookahead_d
 
 def costmap(data, width, height, resolution, logger=None):
     data = np.array(data).reshape(height, width)
-    data[data == -1] = 0  # Unknown space treated as free space
-    data[data > 0] = 1    # Occupied space
-    data[data == 0] = 0   # Free space
     if logger:
         logger.debug("Costmap: Initial costmap processed")
-    wall = np.where(data == 1)
+
+    wall = np.where(data == 100)
     expansion_size = EXPANSION_SIZE
     for i in range(-expansion_size, expansion_size + 1):
         for j in range(-expansion_size, expansion_size + 1):
@@ -177,7 +175,7 @@ def costmap(data, width, height, resolution, logger=None):
             y = wall[1] + j
             x = np.clip(x, 0, height - 1)
             y = np.clip(y, 0, width - 1)
-            data[x, y] = 1
+            data[x,y] = 100
     if logger:
         logger.debug(f"Costmap: Obstacles expanded by {EXPANSION_SIZE} cells")
     return data
@@ -289,7 +287,8 @@ class Robot:
                 self.cmd_vel_pub.publish(twist)
                 self.node.get_logger().warn(f"{self.robot_name}: Obstacle detected within 0.2 meters. Stopping.")
                 # Optionally, implement avoidance or re-planning here instead of stopping
-                return
+                self.arr_info_node = True
+                # return
         else:
             self.node.get_logger().debug(f"{self.robot_name}: No laser data available.")
 
@@ -468,8 +467,8 @@ class Robot:
         if self.node.get_logger().get_effective_level() <= rclpy.logging.LoggingSeverity.DEBUG:
             self.node.get_logger().debug(f"{self.robot_name}: Planning path with map bounds x:[{new_x_min}, {new_x_max}], y:[{new_y_min}, {new_y_max}], resolution={self.node.resolution}")
 
-        # Create new map array initialized to zeros (free space)
-        new_map_array = np.zeros((new_map_height, new_map_width), dtype=int)
+        # Create new map array initialized to -1 (unknown)
+        new_map_array = np.full((new_map_height, new_map_width), -1, dtype=int)
 
         # Compute offsets
         offset_x = int((self.node.origin_x - new_x_min) / self.node.resolution)
@@ -477,7 +476,10 @@ class Robot:
 
         # Copy known map data into new map array
         try:
-            new_map_array[offset_y:offset_y + self.node.map_height, offset_x:offset_x + self.node.map_width] = self.node.map_data
+            # Ensure indices do not exceed the new map size
+            end_y = min(offset_y + self.node.map_height, new_map_height)
+            end_x = min(offset_x + self.node.map_width, new_map_width)
+            new_map_array[offset_y:end_y, offset_x:end_x] = self.node.map_data[:end_y - offset_y, :end_x - offset_x]
             self.node.get_logger().debug(f"{self.robot_name}: Map data copied to new map array with offsets x={offset_x}, y={offset_y}.")
         except Exception as e:
             self.node.get_logger().error(f"{self.robot_name}: Error copying map data: {e}")
@@ -493,14 +495,6 @@ class Robot:
             self.node.get_logger().debug(f"{self.robot_name}: Current index: ({current_y_index}, {current_x_index}), Target index: ({target_y_index}, {target_x_index})")
 
         map_array = new_map_array
-
-        # Validate indices
-        if not (0 <= current_y_index < map_array.shape[0] and 0 <= current_x_index < map_array.shape[1]):
-            self.node.get_logger().error(f"{self.robot_name}: Current position indices out of map bounds.")
-            return
-        if not (0 <= target_y_index < map_array.shape[0] and 0 <= target_x_index < map_array.shape[1]):
-            self.node.get_logger().error(f"{self.robot_name}: Target position indices out of map bounds.")
-            return
 
         # Handle current position inside an obstacle
         if map_array[current_y_index][current_x_index] == 1:
@@ -698,7 +692,7 @@ class MultiRobotControl(Node):
         super().__init__('multi_robot_control_node')
         self.robot_names = ['tb3_0', 
                             'tb3_1', 
-                            # 'tb3_2', 
+                            'tb3_2', 
                             # 'tb3_3'
                             ]
         self.robots = {}
@@ -735,15 +729,89 @@ class MultiRobotControl(Node):
         # Timer for publishing partitions
         self.partition_timer = self.create_timer(1.0, self.publish_partitions)  # Every 1 second
 
+        # Target explored region rate
+        self.target_explored_region_rate = 0.80
+        self.exploration_completed = False
+
+        # Timer to track exploration duration
+        self.exploration_start_time = None
+        self.exploration_end_time = None
+
     def map_callback(self, msg):
         self.map_width = msg.info.width
         self.map_height = msg.info.height
         self.resolution = msg.info.resolution
         self.origin_x = msg.info.origin.position.x
         self.origin_y = msg.info.origin.position.y
+
         # Process map data
-        self.map_data = costmap(msg.data, self.map_width, self.map_height, self.resolution, self.get_logger())
-        self.get_logger().info("Map data received and processed.")
+        processed_map = costmap(msg.data, self.map_width, self.map_height, self.resolution, self.get_logger())
+        self.map_data = processed_map
+        self.get_logger().debug("Map data received and processed.")
+
+        # Initialize exploration start time if not already set
+        if self.exploration_start_time is None:
+            self.exploration_start_time = self.get_clock().now()
+            self.get_logger().info("Exploration started. Timer initialized.")
+
+        # Calculate explored region rate within room bounds
+        # Convert room bounds to map indices
+        # min_j = int((self.room_min_x - self.origin_x) / self.resolution)
+        # max_j = int((self.room_max_x - self.origin_x) / self.resolution)
+        # min_i = int((self.room_min_y - self.origin_y) / self.resolution)
+        # max_i = int((self.room_max_y - self.origin_y) / self.resolution)
+
+        # Use map bounds as room bounds
+        min_j = 0
+        max_j = self.map_width
+        min_i = 0
+        max_i = self.map_height
+
+        # Slice the processed_map within room bounds
+        # room_map = self.map_data[min_i:max_i, min_j:max_j]
+
+        # Total cells within room
+        total_cells = self.map_data.size
+
+        # Explored cells: cells that are free (0) or occupied (1)
+        explored_cells = np.count_nonzero(self.map_data >= 0)
+
+        # Compute explored rate
+        if total_cells > 0:
+            current_explored_rate = explored_cells / total_cells
+            self.get_logger().info(f"Explored Region Rate: {current_explored_rate*100:.2f}%")
+
+            # Check if target explored rate is achieved
+            if current_explored_rate >= self.target_explored_region_rate:
+                if not self.exploration_completed:
+                    self.exploration_completed = True
+                    self.exploration_end_time = self.get_clock().now()
+                    elapsed_time = (self.exploration_end_time - self.exploration_start_time).nanoseconds / 1e9
+                    self.get_logger().info(f"Target explored region rate of {self.target_explored_region_rate*100:.2f}% achieved.")
+                    self.get_logger().info(f"Exploration completed in {elapsed_time:.2f} seconds.")
+                    self.handle_exploration_completion()
+        else:
+            self.get_logger().warn("Room boundaries result in zero cells.")
+
+    def handle_exploration_completion(self):
+        """
+        Handle the event when the target explored region rate is achieved.
+        Actions can include stopping all robots, logging information, etc.
+        """
+        self.get_logger().info("Exploration target reached. Initiating shutdown sequence.")
+
+        # Stop all robots by publishing zero velocities
+        stop_twist = Twist()
+        stop_twist.linear.x = 0.0
+        stop_twist.angular.z = 0.0
+        for robot_name, robot in self.robots.items():
+            robot.cmd_vel_pub.publish(stop_twist)
+            self.get_logger().info(f"Published stop command to {robot_name}.")
+
+        # Optionally, perform other actions such as saving logs, shutting down the node, etc.
+        # For example, shutting down after stopping the robots:
+        self.get_logger().info("All robots stopped. Shutting down the node.")
+        rclpy.shutdown()
 
     def publish_partitions(self):
         """Compute and publish the partitions for each robot."""
