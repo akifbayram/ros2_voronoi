@@ -1,11 +1,9 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, Point, Quaternion, PoseStamped, Pose
-from nav_msgs.msg import Odometry, OccupancyGrid, Path
+from nav_msgs.msg import OccupancyGrid, Path, GridCells
 from sensor_msgs.msg import LaserScan
-from tf_transformations import euler_from_quaternion, quaternion_from_euler
 import tf2_ros
-import tf2_geometry_msgs
 from math import cos, radians, copysign, sqrt, pow, pi, atan2
 import numpy as np
 import math
@@ -19,7 +17,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 # Parameters for navigation
 LOOKAHEAD_DISTANCE = 0.25
 SPEED = 0.15
-EXPANSION_SIZE = 1 # For obstacle expansion in the map
+EXPANSION_SIZE = 1  # For obstacle expansion in the map
 LAMBDA_VALUE = 0.5
 
 def euler_from_quaternion_func(x, y, z, w):
@@ -42,11 +40,12 @@ def heuristic(a, b, logger=None):
     return h
 
 def astar(array, start, goal, logger=None):
-    neighbors = [(0,1),(0,-1),(1,0),(-1,0),(1,1),(1,-1),(-1,1),(-1,-1)]
+    neighbors = [(0, 1), (0, -1), (1, 0), (-1, 0),
+                (1, 1), (1, -1), (-1, 1), (-1, -1)]
     close_set = set()
     came_from = {}
-    gscore = {start:0}
-    fscore = {start:heuristic(start, goal, logger)}
+    gscore = {start: 0}
+    fscore = {start: heuristic(start, goal, logger)}
     oheap = []
     heapq.heappush(oheap, (fscore[start], start))
     if logger:
@@ -70,7 +69,7 @@ def astar(array, start, goal, logger=None):
             neighbor = current[0] + i, current[1] + j
             tentative_g_score = gscore[current] + heuristic(current, neighbor, logger)
             if 0 <= neighbor[0] < array.shape[0]:
-                if 0 <= neighbor[1] < array.shape[1]:                
+                if 0 <= neighbor[1] < array.shape[1]:
                     if array[neighbor[0]][neighbor[1]] == 1:
                         if logger:
                             logger.debug(f"A* Skipping obstacle at {neighbor}")
@@ -85,7 +84,7 @@ def astar(array, start, goal, logger=None):
                 continue
             if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
                 continue
-            if  tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1] for i in oheap]:
+            if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1] for i in oheap]:
                 came_from[neighbor] = current
                 gscore[neighbor] = tentative_g_score
                 fscore[neighbor] = tentative_g_score + heuristic(neighbor, goal, logger)
@@ -101,7 +100,7 @@ def bspline_planning(array, sn, logger=None):
         array = np.array(array)
         x = array[:, 0]
         y = array[:, 1]
-        N = 2
+        N = 3  # Degree of the spline
         t = range(len(x))
         x_tup = si.splrep(t, x, k=N)
         y_tup = si.splrep(t, y, k=N)
@@ -112,8 +111,8 @@ def bspline_planning(array, sn, logger=None):
         yl = y.tolist()
         y_list[1] = yl + [0.0] * (N + 1)
         ipl_t = np.linspace(0.0, len(x) - 1, sn)
-        rx = si.splev(ipl_t, x_list)
-        ry = si.splev(ipl_t, y_list)
+        rx = si.splev(ipl_t, x_tup)
+        ry = si.splev(ipl_t, y_tup)
         path = [(rx[i], ry[i]) for i in range(len(rx))]
         if logger:
             logger.debug(f"Bspline path generated with {len(path)} points")
@@ -184,7 +183,7 @@ def costmap(data, width, height, resolution, logger=None):
     return data
 
 class Robot:
-    def __init__(self, robot_name, node, other_robots_positions, lock):
+    def __init__(self, robot_name, node, other_robots_positions, lock, tf_buffer):
         self.robot_name = robot_name
         self.node = node
         self.position = Point()
@@ -197,16 +196,13 @@ class Robot:
         self.laser_msg_range_max = None
         self.laser_values = None
         self.laser_msg = None
-        self.record_info_node = [ (self.position.x, self.position.y) ]
-        
+        self.record_info_node = [(self.position.x, self.position.y)]
+
         self.other_robots_positions = other_robots_positions  # Shared among robots
         self.lock = lock  # For thread-safe access to shared data
 
-        # Initialize tf2 buffer and listener
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, node, spin_thread=True)
-        # Allow time for the listener to fill its buffer
-        time.sleep(1.0)
+        # Use the shared tf_buffer
+        self.tf_buffer = tf_buffer
 
         # Publishers and Subscribers
         self.cmd_vel_pub = node.create_publisher(Twist, '/' + self.robot_name + '/cmd_vel', 10)
@@ -349,7 +345,7 @@ class Robot:
                 # Create and store goal marker
                 self.create_goal_marker(self.next_target_node[0], self.next_target_node[1])
             else:
-                self.node.get_logger().warning(f"{self.robot_name}: No valid Voronoi points found. Using all option points.")
+                self.node.get_logger().warning(f"{self.robot_name}: No valid Min-Omega point found. Using all option points.")
                 if option_target_point:
                     # Use Min-Omega heuristic on all option points
                     self.next_target_node = self.get_min_Omega_distance_point(option_target_point)
@@ -427,7 +423,7 @@ class Robot:
             if distance < 0.5:
                 return True
         return False
-        
+
     def find_nearest_free_cell(self, map_array, y, x, search_radius=5):
         """
         Find the nearest free cell to the given (y, x) position within the search_radius.
@@ -481,7 +477,7 @@ class Robot:
 
         # Copy known map data into new map array
         try:
-            new_map_array[offset_y:offset_y+self.node.map_height, offset_x:offset_x+self.node.map_width] = self.node.map_data
+            new_map_array[offset_y:offset_y + self.node.map_height, offset_x:offset_x + self.node.map_width] = self.node.map_data
             self.node.get_logger().debug(f"{self.robot_name}: Map data copied to new map array with offsets x={offset_x}, y={offset_y}.")
         except Exception as e:
             self.node.get_logger().error(f"{self.robot_name}: Error copying map data: {e}")
@@ -539,7 +535,6 @@ class Robot:
             self.publish_planned_path(self.path)
         else:
             self.node.get_logger().error(f"{self.robot_name}: Path planning failed using A*.")
-
 
     def is_path_obstructed(self):
         # Check if there are obstacles ahead along the path
@@ -609,7 +604,6 @@ class Robot:
             self.path = []
             self.node.get_logger().info(f"{self.robot_name}: Completed path following.")
 
-
     def publish_planned_path(self, path):
         """Publish the planned path for this robot."""
         path_msg = Path()
@@ -645,7 +639,7 @@ class Robot:
         marker.scale.x = 0.2
         marker.scale.y = 0.2
         marker.scale.z = 0.2
-        marker.color.a = 1.0 
+        marker.color.a = 1.0
         marker.color.r = 1.0
         marker.color.g = 0.0
         marker.color.b = 0.0
@@ -693,7 +687,7 @@ class Robot:
             pose.header.frame_id = 'map'
             pose.header.stamp = path_msg.header.stamp
             pose.pose.position = p
-            pose.pose.orientation.w = 1.0 
+            pose.pose.orientation.w = 1.0
             poses.append(pose)
         path_msg.poses = poses
         self.robot_path_pub.publish(path_msg)
@@ -702,14 +696,25 @@ class Robot:
 class MultiRobotControl(Node):
     def __init__(self):
         super().__init__('multi_robot_control_node')
-        self.robot_names = ['tb3_0', 'tb3_1']
+        self.robot_names = ['tb3_0', 
+                            'tb3_1', 
+                            # 'tb3_2', 
+                            # 'tb3_3'
+                            ]
         self.robots = {}
         self.other_robots_positions = {}  # Shared positions among robots
         self.lock = threading.Lock()  # Lock for thread-safe access
 
+        # Initialize a single tf2 buffer and listener
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self, spin_thread=True)
+        # Allow time for the listener to fill its buffer
+        time.sleep(1.0)
+
         for robot_name in self.robot_names:
             self.other_robots_positions[robot_name] = (0.0, 0.0)
-            self.robots[robot_name] = Robot(robot_name, self, self.other_robots_positions, self.lock)
+            # Pass the shared tf_buffer to each Robot
+            self.robots[robot_name] = Robot(robot_name, self, self.other_robots_positions, self.lock, self.tf_buffer)
 
         # Map subscription
         self.map_data = None
@@ -722,6 +727,14 @@ class MultiRobotControl(Node):
         self.map_sub = self.create_subscription(OccupancyGrid, '/map', self.map_callback, 10)
         self.get_logger().info("MultiRobotControl node initialized and subscribed to /map.")
 
+        # Partition publishers
+        self.partition_publishers = {}
+        for robot_name in self.robot_names:
+            self.partition_publishers[robot_name] = self.create_publisher(GridCells, f'/{robot_name}/partition', 10)
+
+        # Timer for publishing partitions
+        self.partition_timer = self.create_timer(1.0, self.publish_partitions)  # Every 1 second
+
     def map_callback(self, msg):
         self.map_width = msg.info.width
         self.map_height = msg.info.height
@@ -731,6 +744,55 @@ class MultiRobotControl(Node):
         # Process map data
         self.map_data = costmap(msg.data, self.map_width, self.map_height, self.resolution, self.get_logger())
         self.get_logger().info("Map data received and processed.")
+
+    def publish_partitions(self):
+        """Compute and publish the partitions for each robot."""
+        if self.map_data is None:
+            self.get_logger().warning("Map data not available for partitioning.")
+            return
+
+        # Get robot positions
+        with self.lock:
+            robot_positions = self.other_robots_positions.copy()
+
+        # Initialize partitions
+        partitions = {robot_name: [] for robot_name in self.robot_names}
+
+        # Loop over map cells
+        for i in range(self.map_height):
+            for j in range(self.map_width):
+                if self.map_data[i][j] == 0:  # Free space
+                    # Compute cell position
+                    x = self.origin_x + (j + 0.5) * self.resolution
+                    y = self.origin_y + (i + 0.5) * self.resolution
+
+                    # Find closest robot
+                    min_distance = float('inf')
+                    closest_robot = None
+
+                    for robot_name, position in robot_positions.items():
+                        dx = position[0] - x
+                        dy = position[1] - y
+                        distance = dx * dx + dy * dy  # Use squared distance
+
+                        if distance < min_distance:
+                            min_distance = distance
+                            closest_robot = robot_name
+
+                    # Add cell to partition
+                    if closest_robot is not None:
+                        partitions[closest_robot].append(Point(x=x, y=y, z=0.0))
+
+        # For each robot, publish GridCells
+        for robot_name, cells in partitions.items():
+            grid_cells_msg = GridCells()
+            grid_cells_msg.header.frame_id = 'map'
+            grid_cells_msg.header.stamp = self.get_clock().now().to_msg()
+            grid_cells_msg.cell_width = self.resolution
+            grid_cells_msg.cell_height = self.resolution
+            grid_cells_msg.cells = cells
+            self.partition_publishers[robot_name].publish(grid_cells_msg)
+            self.get_logger().debug(f"Published partition for {robot_name} with {len(cells)} cells.")
 
 def main(args=None):
     rclpy.init(args=args)
@@ -747,6 +809,8 @@ def main(args=None):
             robot.goal_marker_pub.destroy()
             robot.robot_path_pub.destroy()
             robot.goals_marker_pub.destroy()
+        for publisher in multi_robot_control.partition_publishers.values():
+            publisher.destroy()
         multi_robot_control.destroy_node()
         rclpy.shutdown()
 
