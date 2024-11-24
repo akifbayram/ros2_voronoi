@@ -7,6 +7,9 @@ def merge_maps(map_list):
     if not map_list:
         return None
 
+    if len(map_list) == 1:  # If there's only one map, return it directly
+        return map_list[0]
+
     merged_map = OccupancyGrid()
     merged_map.header = map_list[0].header
     merged_map.header.frame_id = 'map'
@@ -49,7 +52,7 @@ class MergeMapNode(Node):
         self.maps = {}
 
         # Subscribe to a configurable list of map topics
-        robot_count = self.declare_parameter('robot_count', 2).get_parameter_value().integer_value
+        robot_count = self.declare_parameter('robot_count', 1).get_parameter_value().integer_value
         for i in range(robot_count):
             robot_namespace = f'tb3_{i}'
             map_topic = f'/{robot_namespace}/map'
@@ -59,9 +62,10 @@ class MergeMapNode(Node):
     def map_callback(self, robot_namespace):
         def callback(msg):
             self.maps[robot_namespace] = msg
-            if len(self.maps) > 1:  # Merge when at least two maps are available
+            if len(self.maps) > 0:  # Publish when at least one map is available
                 merged_map = merge_maps(list(self.maps.values()))
-                self.publisher.publish(merged_map)
+                if merged_map:
+                    self.publisher.publish(merged_map)
         return callback
 
 def main(args=None):
@@ -69,7 +73,4 @@ def main(args=None):
     merge_map_node = MergeMapNode()
     rclpy.spin(merge_map_node)
     merge_map_node.destroy_node()
-    rclpy.shutdown()
-
-if __name__ == '__main__':
-    main()
+   
