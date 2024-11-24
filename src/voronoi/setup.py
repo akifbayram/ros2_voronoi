@@ -7,7 +7,8 @@ package_name = 'voronoi'
 model_dirs = [
     'tb3_0',
     'tb3_1',
-    'tb3_2'
+    'tb3_2',
+    'tb3_3',
 ]
 
 model_files = []

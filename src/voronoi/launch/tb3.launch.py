@@ -79,8 +79,8 @@ def launch_setup(context, *args, **kwargs):
             arguments=[
                 '-entity', name,
                 '-file', urdf_path,
-                '-x', str(-2.75 + i * 0.5),  # Stagger spawn positions on x-axis
-                '-y', str(-2.0 + i * 0.5),   # Stagger spawn positions on y-axis
+                '-x', str(-2.75),  # Stagger spawn positions on x-axis
+                '-y', str(1 - i),   # Space positions on y-axis
                 '-z', '0.01',
                 '-robot_namespace', name,
             ],
@@ -137,15 +137,15 @@ def launch_setup(context, *args, **kwargs):
         )
 
         # RViz for each robot (optional, can be customized or unified)
-        rviz = Node(
-            package='rviz2',
-            executable='rviz2',
-            name=f'rviz_{name}',
-            namespace=name,
-            output='screen',
-            arguments=['-d', os.path.join(voronoi_pkg, 'rviz', f'{name}.rviz')],
-            parameters=[{'use_sim_time': True}],
-        )
+        # rviz = Node(
+        #     package='rviz2',
+        #     executable='rviz2',
+        #     name=f'rviz_{name}',
+        #     namespace=name,
+        #     output='screen',
+        #     arguments=['-d', os.path.join(voronoi_pkg, 'rviz', f'{name}.rviz')],
+        #     parameters=[{'use_sim_time': True}],
+        # )
 
         # Add nodes to the list
         nodes.extend([
@@ -153,7 +153,7 @@ def launch_setup(context, *args, **kwargs):
             robot_state_publisher,
             async_slam_toolbox,
             static_transform_publisher,
-            rviz  # Remove or comment out if individual RViz instances are not needed
+            # rviz  # Remove or comment out if individual RViz instances are not needed
         ])
 
     # Create a list to hold all launch actions
