@@ -36,44 +36,16 @@ colcon build
 
 ---
 
-## TurtleBot4 Simulation
-
-The launch file `tb4.launch.py` may be modified for one or multiple robots.
-
-1. **Launch Simulation**:
-   ```bash
-   cd ~/ros2_voronoi
-   . install/setup.bash
-   ros2 launch voronoi tb4.launch.py
-   ```
-
-2. **Start Exploration**:
-   ```bash
-   source /etc/turtlebot4/setup.bash
-   cd ~/ros2_voronoi
-   . install/setup.bash
-   ros2 run voronoi voronoi_tb4
-   ```
-
----
-
 ## TurtleBot3 Simulation
 
-1. **Launch Simulation**:
+1. **Launch Simulation and Map Merge Node**:
    ```bash
    cd ~/ros2_voronoi
    . install/setup.bash
    ros2 launch voronoi tb3.launch.py
    ```
 
-2. **Start Map Merge Node**:
-   ```bash
-   cd ~/ros2_voronoi && 
-   . install/setup.bash && 
-   ros2 launch merge_map merge_map_launch.py 
-   ```
-
-3. **Start Exploration**:
+2. **Start Exploration**:
    ```bash
    source /etc/turtlebot4/setup.bash
    cd ~/ros2_voronoi
@@ -83,9 +55,12 @@ The launch file `tb4.launch.py` may be modified for one or multiple robots.
 
 ---
 
-### Known Issues/Challenges
+## **Known Issues**
 
-- **Multi-Robot Communication**: Users may experience intermittent issues with launching SLAM, Nav2, or RViz for additional TurtleBot4 units.
+- **`voronoi_tb3`**:
+   - Robots remain stationary after detecting an obstacle and fail to replan
+
+- **`tb4.launch.py`**: Users may experience intermittent issues with launching SLAM, Nav2, or RViz for additional TurtleBot4 units.
 
     - [Nav2 Stalling on Multiple Robots](https://github.com/ros-navigation/navigation2/issues/4350)
     - [SLAM with namespaced Robots](https://github.com/turtlebot/turtlebot4/issues/159)
