@@ -9,6 +9,10 @@
 
 This project aims to use a Voronoi-partition-based exploration algorithm to enable multiple robots to autonomously navigate and explore an environment, generating a map through TurtleBot simulations.
 
+<video width="640" controls>
+  <source src="media/voronoi_tb3_2.mp4" type="video/mp4">
+</video>
+
 ---
 
 ## Requirements
@@ -98,3 +102,10 @@ This project draws inspiration and code from the following repositories:
 2. [**Connected-and-Autonomous-Systems-Lab/Voronoi**](https://github.com/Connected-and-Autonomous-Systems-Lab/voronoi):  
    Provides the Voronoi-based exploration algorithm used in this project.  
    - This repository is itself adapted from [**Peace1997/Voronoi_Based_Multi_Robot_Collaborate_Exploration_Unknow_Enviroment**](https://github.com/Peace1997/Voronoi_Based_Multi_Robot_Collaborate_Exploration_Unknow_Enviroment/tree/master)
+
+
+## **Transform Tree**
+
+For three robots
+
+![alt text](media/image.png)
