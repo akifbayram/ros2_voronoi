@@ -820,6 +820,8 @@ class Robot:
 
     def publish_robot_path(self):
         """Publish the traversed path followed by this robot."""
+        self.traversed_path.append(Point(x=self.position.x, y=self.position.y, z=self.position.z))
+
         path_msg = Path()
         path_msg.header.frame_id = 'map'
         path_msg.header.stamp = self.node.get_clock().now().to_msg()
