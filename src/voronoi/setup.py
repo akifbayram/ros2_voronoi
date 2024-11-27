@@ -43,7 +43,6 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'dijkstra = script.dijkstra:main',
             'voronoi_tb4 = script.voronoi_tb4:main',
             'voronoi_tb3 = script.voronoi_tb3:main',
         ],
