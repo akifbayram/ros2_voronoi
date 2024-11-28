@@ -13,6 +13,7 @@ import random
 import heapq
 import scipy.interpolate as si
 from visualization_msgs.msg import Marker, MarkerArray
+from scipy.ndimage import binary_dilation
 
 # Parameters for navigation
 LOOKAHEAD_DISTANCE = 0.25
@@ -97,32 +98,23 @@ def astar(array, start, goal, logger=None):
         logger.warning("A* failed to find a path")
     return False
 
-def bspline_planning(array, sn, logger=None):
+def bspline_planning(path, num_points, logger=None):
     try:
-        array = np.array(array)
-        x = array[:, 0]
-        y = array[:, 1]
-        N = 3  # Degree of the spline
-        t = range(len(x))
-        x_tup = si.splrep(t, x, k=N)
-        y_tup = si.splrep(t, y, k=N)
-        x_list = list(x_tup)
-        xl = x.tolist()
-        x_list[1] = xl + [0.0] * (N + 1)
-        y_list = list(y_tup)
-        yl = y.tolist()
-        y_list[1] = yl + [0.0] * (N + 1)
-        ipl_t = np.linspace(0.0, len(x) - 1, sn)
-        rx = si.splev(ipl_t, x_tup)
-        ry = si.splev(ipl_t, y_tup)
-        path = [(rx[i], ry[i]) for i in range(len(rx))]
+        path = np.array(path)
+        t = np.linspace(0, 1, len(path))
+        t_new = np.linspace(0, 1, num_points)
+        spline_x = si.splrep(t, path[:, 0], k=3)
+        spline_y = si.splrep(t, path[:, 1], k=3)
+        rx = si.splev(t_new, spline_x)
+        ry = si.splev(t_new, spline_y)
+        smoothed_path = list(zip(rx, ry))
         if logger:
-            logger.debug(f"Bspline path generated with {len(path)} points")
+            logger.debug(f"Bspline path generated with {len(smoothed_path)} points")
+        return smoothed_path
     except Exception as e:
         if logger:
             logger.error(f"Bspline planning error: {e}")
-        path = array
-    return path
+        return path.tolist()
 
 def pure_pursuit(current_x, current_y, current_heading, path, index, lookahead_distance, speed, logger=None):
     closest_point = None
@@ -164,22 +156,12 @@ def pure_pursuit(current_x, current_y, current_heading, path, index, lookahead_d
 
 def costmap(data, width, height, resolution, logger=None):
     data = np.array(data).reshape(height, width)
+    obstacle = (data == 100).astype(np.uint8)
+    structure = np.ones((EXPANSION_SIZE*2+1, EXPANSION_SIZE*2+1))
+    expanded_obstacle = binary_dilation(obstacle, structure=structure).astype(np.int8) * 100
+    data[expanded_obstacle == 100] = 100
     if logger:
-        logger.debug("Costmap: Initial costmap processed")
-
-    wall = np.where(data == 100)
-    expansion_size = EXPANSION_SIZE
-    for i in range(-expansion_size, expansion_size + 1):
-        for j in range(-expansion_size, expansion_size + 1):
-            if i == 0 and j == 0:
-                continue
-            x = wall[0] + i
-            y = wall[1] + j
-            x = np.clip(x, 0, height - 1)
-            y = np.clip(y, 0, width - 1)
-            data[x, y] = 100
-    if logger:
-        logger.debug(f"Costmap: Obstacles expanded by {EXPANSION_SIZE} cells")
+        logger.debug(f"Costmap: Obstacles expanded by {EXPANSION_SIZE} cells using morphological operations")
     return data
 
 class Robot:
