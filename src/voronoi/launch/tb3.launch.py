@@ -34,8 +34,14 @@ def launch_setup(context, *args, **kwargs):
     turtlebot3_gazebo_pkg = get_package_share_directory('turtlebot3_gazebo')
     voronoi_pkg = get_package_share_directory('voronoi')
     merge_map_pkg = get_package_share_directory('merge_map')
+    # nav2_pkg = get_package_share_directory('nav2_bringup')  # Ensure Nav2 is installed
 
+    # World file
+    # world = os.path.join(
+    #     get_package_share_directory('turtlebot3_gazebo'), 'worlds',  'turtlebot3_house.world'
+    # )
     world = os.path.join(voronoi_pkg, 'worlds', 'simple_env_1.world')
+
     robot_desc_path = os.path.join(turtlebot3_gazebo_pkg, "urdf", "turtlebot3_burger.urdf")
 
     # Gazebo Server and Client
@@ -79,8 +85,8 @@ def launch_setup(context, *args, **kwargs):
             arguments=[
                 '-entity', name,
                 '-file', urdf_path,
-                '-x', str(-2.75),  # Stagger spawn positions on x-axis
-                '-y', str(1 - i),   # Space positions on y-axis
+                '-x', str(-3),  # Stagger spawn positions on x-axis
+                '-y', str(-1 - i),   # Space positions on y-axis
                 '-z', '0.01',
                 '-robot_namespace', name,
             ],
@@ -136,15 +142,20 @@ def launch_setup(context, *args, **kwargs):
             output='screen',
         )
 
-        # RViz for each robot (optional, can be customized or unified)
-        # rviz = Node(
-        #     package='rviz2',
-        #     executable='rviz2',
-        #     name=f'rviz_{name}',
-        #     namespace=name,
-        #     output='screen',
-        #     arguments=['-d', os.path.join(voronoi_pkg, 'rviz', f'{name}.rviz')],
-        #     parameters=[{'use_sim_time': True}],
+        # Include Nav2 for the robot
+        # nav2_launch = IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource(
+        #         os.path.join(nav2_pkg, 'launch', 'bringup_launch.py')  # Adjust path if different
+        #     ),
+        #     launch_arguments={
+        #         'namespace': name,
+        #         'use_namespace': 'True',
+        #         'slam': 'True',  # Assuming SLAM is handled by slam_toolbox
+        #         'map': '',  # Ensure map is correctly set or passed
+        #         'use_sim_time': 'True',
+        #         'autostart': 'True',
+        #         'params_file': os.path.join(voronoi_pkg, 'params',  f'{name}_nav2_params.yaml'),  # Create per-robot params
+        #     }.items(),
         # )
 
         # Add nodes to the list
@@ -153,13 +164,14 @@ def launch_setup(context, *args, **kwargs):
             robot_state_publisher,
             async_slam_toolbox,
             static_transform_publisher,
+            # nav2_launch,  # Add Nav2 launch
             # rviz  # Remove or comment out if individual RViz instances are not needed
         ])
 
     # Create a list to hold all launch actions
     launch_actions = [
         gzserver_cmd,
-        gzclient_cmd,
+        # gzclient_cmd,
         merge_map_cmd,
     ] + nodes
 
