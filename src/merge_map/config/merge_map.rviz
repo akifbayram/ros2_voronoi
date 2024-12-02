@@ -4,6 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /tb3_01/Information Node1
         - /tb3_31/Traveled Path1
       Splitter Ratio: 0.47141191363334656
     Tree Height: 1286
@@ -224,6 +225,18 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /tb3_0/partition
           Value: true
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: true
+          Name: Information Node
+          Namespaces:
+            information_nodes: true
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /tb3_0/information_nodes
+          Value: true
       Enabled: true
       Name: tb3_0
     - Class: rviz_common/Group
@@ -369,6 +382,18 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /tb3_1/robot_path
           Value: true
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: true
+          Name: Information Node
+          Namespaces:
+            information_nodes: true
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /tb3_1/information_nodes
+          Value: true
       Enabled: true
       Name: tb3_1
     - Class: rviz_common/Group
@@ -513,6 +538,18 @@ Visualization Manager:
             History Policy: Keep Last
             Reliability Policy: Reliable
             Value: /tb3_2/robot_path
+          Value: true
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: true
+          Name: Information Node
+          Namespaces:
+            information_nodes: true
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /tb3_2/information_nodes
           Value: true
       Enabled: true
       Name: tb3_2
