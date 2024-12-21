@@ -13,15 +13,12 @@ import random
 import heapq
 import scipy.interpolate as si
 from visualization_msgs.msg import Marker, MarkerArray
-from scipy.ndimage import binary_dilation
 
 # Parameters for navigation
 LOOKAHEAD_DISTANCE = 0.25
 SPEED = 0.15
-EXPANSION_SIZE = 1  # For obstacle expansion in the map
-LAMBDA_VALUE = 0.83
-TARGET_EXPLORE_RATE = 0.90
-REACHED_THRESHOLD = 0.3
+EXPANSION_SIZE = 0 # For obstacle expansion in the map
+LAMBDA_VALUE = 1
 
 def euler_from_quaternion_func(x, y, z, w):
     t0 = +2.0 * (w * x + y * z)
@@ -36,132 +33,205 @@ def euler_from_quaternion_func(x, y, z, w):
     yaw_z = math.atan2(t3, t4)
     return yaw_z
 
+#############################################
+# Heuristic
+#############################################
 def heuristic(a, b, logger=None):
-    h = np.linalg.norm(np.array(a) - np.array(b))
+    """
+    Euclidean distance can work fine, but 
+    we handle consistent diagonal cost via the same.
+    """
+    dx = abs(a[0] - b[0])
+    dy = abs(a[1] - b[1])
+    h = math.sqrt(dx**2 + dy**2)
     if logger:
         logger.debug(f"Heuristic between {a} and {b}: {h}")
     return h
 
+#############################################
+# A* Path Finding
+#############################################
 def astar(array, start, goal, logger=None):
-    neighbors = [(0, 1), (0, -1), (1, 0), (-1, 0),
-                (1, 1), (1, -1), (-1, 1), (-1, -1)]
+    """
+    A* with 8-direction moves. Diagonal steps have cost sqrt(2). 
+    """
+    neighbors = [
+        (0, 1, 1.0),   # up
+        (0, -1, 1.0),  # down
+        (1, 0, 1.0),   # right
+        (-1, 0, 1.0),  # left
+        (1, 1, math.sqrt(2)),   
+        (1, -1, math.sqrt(2)),
+        (-1, 1, math.sqrt(2)),
+        (-1, -1, math.sqrt(2))
+    ]
+
     close_set = set()
     came_from = {}
     gscore = {start: 0}
     fscore = {start: heuristic(start, goal, logger)}
     oheap = []
     heapq.heappush(oheap, (fscore[start], start))
+
     if logger:
         logger.debug(f"A* Start: {start}, Goal: {goal}")
+
     while oheap:
         current = heapq.heappop(oheap)[1]
         if logger:
             logger.debug(f"A* Current node: {current}")
+
         if current == goal:
             data = []
             while current in came_from:
                 data.append(current)
                 current = came_from[current]
             data.append(start)
-            data = data[::-1]
+            data.reverse()
             if logger:
                 logger.info(f"A* Path found: {data}")
             return data
+
         close_set.add(current)
-        for i, j in neighbors:
-            neighbor = current[0] + i, current[1] + j
-            tentative_g_score = gscore[current] + heuristic(current, neighbor, logger)
-            if 0 <= neighbor[0] < array.shape[0]:
-                if 0 <= neighbor[1] < array.shape[1]:
-                    if array[neighbor[0]][neighbor[1]] == 1:
-                        if logger:
-                            logger.debug(f"A* Skipping obstacle at {neighbor}")
-                        continue
-                else:
-                    if logger:
-                        logger.debug(f"A* Neighbor {neighbor} out of Y bounds")
-                    continue
-            else:
-                if logger:
-                    logger.debug(f"A* Neighbor {neighbor} out of X bounds")
+
+        for dx, dy, step_cost in neighbors:
+            neighbor = (current[0] + dx, current[1] + dy)
+            if not (0 <= neighbor[0] < array.shape[0] and 0 <= neighbor[1] < array.shape[1]):
                 continue
-            if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
+            if array[neighbor[0]][neighbor[1]] == 1:
                 continue
-            if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1] for i in oheap]:
+
+            tentative_g_score = gscore[current] + step_cost
+
+            if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, float('inf')):
+                continue
+
+            if tentative_g_score < gscore.get(neighbor, float('inf')):
                 came_from[neighbor] = current
                 gscore[neighbor] = tentative_g_score
                 fscore[neighbor] = tentative_g_score + heuristic(neighbor, goal, logger)
                 heapq.heappush(oheap, (fscore[neighbor], neighbor))
-                if logger:
-                    logger.debug(f"A* Adding neighbor {neighbor} with fscore {fscore[neighbor]}")
+
     if logger:
         logger.warning("A* failed to find a path")
     return False
 
-def bspline_planning(path, num_points, logger=None):
+#############################################
+# B-spline Planning
+#############################################
+def bspline_planning(array, sn, logger=None):
+    """
+    We create a B-spline from the path array. If that fails, we fallback.
+    """
     try:
-        path = np.array(path)
-        t = np.linspace(0, 1, len(path))
-        t_new = np.linspace(0, 1, num_points)
-        spline_x = si.splrep(t, path[:, 0], k=3)
-        spline_y = si.splrep(t, path[:, 1], k=3)
-        rx = si.splev(t_new, spline_x)
-        ry = si.splev(t_new, spline_y)
-        smoothed_path = list(zip(rx, ry))
+        array = np.array(array)
+        x = array[:, 0]
+        y = array[:, 1]
+        N = 3  # cubic spline
+        t = range(len(x))
+        x_tup = si.splrep(t, x, k=N)
+        y_tup = si.splrep(t, y, k=N)
+
+        # Extend knots to maintain continuity at endpoints
+        x_list = list(x_tup)
+        y_list = list(y_tup)
+        xl = x.tolist()
+        yl = y.tolist()
+        x_list[1] = xl + [xl[-1]] * (N + 1)
+        y_list[1] = yl + [yl[-1]] * (N + 1)
+        x_tup = tuple(x_list)
+        y_tup = tuple(y_list)
+
+        ipl_t = np.linspace(0.0, len(x) - 1, sn)
+        rx = si.splev(ipl_t, x_tup)
+        ry = si.splev(ipl_t, y_tup)
+        path = [(rx[i], ry[i]) for i in range(len(rx))]
         if logger:
-            logger.debug(f"Bspline path generated with {len(smoothed_path)} points")
-        return smoothed_path
+            logger.debug(f"Bspline path generated with {len(path)} points")
     except Exception as e:
         if logger:
             logger.error(f"Bspline planning error: {e}")
-        return path.tolist()
+        path = array
+    return path
 
+#############################################
+# Pure Pursuit
+#############################################
 def pure_pursuit(current_x, current_y, current_heading, path, index, lookahead_distance, speed, logger=None):
+    """
+    Instead of fully stopping on large steering, reduce linear speed proportionally.
+    """
     closest_point = None
     v = speed
+
     for i in range(index, len(path)):
         x = path[i][0]
         y = path[i][1]
         distance = math.hypot(current_x - x, current_y - y)
-        if logger:
-            logger.debug(f"Pure Pursuit: Checking point {i} at ({x}, {y}) with distance {distance}")
-        if lookahead_distance < distance:
+        if distance > lookahead_distance:
             closest_point = (x, y)
             index = i
             break
+
     if closest_point is not None:
         target_heading = math.atan2(closest_point[1] - current_y, closest_point[0] - current_x)
-        desired_steering_angle = target_heading - current_heading
-        if logger:
-            logger.debug(f"Pure Pursuit: Closest point found at {closest_point} with target heading {target_heading}")
     else:
         target_heading = math.atan2(path[-1][1] - current_y, path[-1][0] - current_x)
-        desired_steering_angle = target_heading - current_heading
         index = len(path) - 1
-        if logger:
-            logger.debug(f"Pure Pursuit: No point found, using last path point with heading {target_heading}")
+
+    desired_steering_angle = target_heading - current_heading
     if desired_steering_angle > math.pi:
         desired_steering_angle -= 2 * math.pi
     elif desired_steering_angle < -math.pi:
         desired_steering_angle += 2 * math.pi
-    if desired_steering_angle > math.pi / 6 or desired_steering_angle < -math.pi / 6:
+
+    max_steer = math.pi / 3.0  # 60 degrees
+    if abs(desired_steering_angle) > max_steer:
         sign = 1 if desired_steering_angle > 0 else -1
-        desired_steering_angle = sign * math.pi / 4
-        v = 0.0
-        if logger:
-            logger.debug(f"Pure Pursuit: Steering angle {desired_steering_angle} exceeds limit, setting angular velocity and stopping")
+        desired_steering_angle = sign * max_steer
+        v = speed * 0.2
+    else:
+        steer_ratio = abs(desired_steering_angle) / max_steer
+        v = speed * (1 - 0.8 * steer_ratio)
+
     if logger:
-        logger.debug(f"Pure Pursuit: v={v}, omega={desired_steering_angle}, index={index}")
+        logger.debug(f"Pure Pursuit: v={v:.3f}, omega={desired_steering_angle:.3f}, index={index}")
+
     return v, desired_steering_angle, index
 
+#############################################
+# Costmap
+#############################################
 def costmap(data, width, height, resolution, logger=None):
+    """
+    Improved obstacle inflation using BFS within EXPANSION_SIZE.
+    """
     data = np.array(data).reshape(height, width)
-    obstacle = (data == 100).astype(np.uint8)
-    structure = np.ones((EXPANSION_SIZE*2+1, EXPANSION_SIZE*2+1))
-    expanded_obstacle = binary_dilation(obstacle, structure=structure).astype(np.int8) * 100
-    data[expanded_obstacle == 100] = 100
     if logger:
-        logger.debug(f"Costmap: Obstacles expanded by {EXPANSION_SIZE} cells using morphological operations")
+        logger.debug("Costmap: Initial costmap processed")
+
+    occupied_indices = np.argwhere(data == 100)
+    from collections import deque
+    queue = deque()
+    visited = np.full((height, width), False, dtype=bool)
+    
+    for oy, ox in occupied_indices:
+        queue.append((oy, ox, 0))
+        visited[oy, ox] = True
+
+    while queue:
+        cy, cx, dist = queue.popleft()
+        if dist > EXPANSION_SIZE:
+            continue
+        data[cy, cx] = 100
+        for ny, nx in [(cy-1, cx), (cy+1, cx), (cy, cx-1), (cy, cx+1),
+                       (cy-1, cx-1), (cy-1, cx+1), (cy+1, cx-1), (cy+1, cx+1)]:
+            if 0 <= ny < height and 0 <= nx < width and not visited[ny, nx]:
+                visited[ny, nx] = True
+                queue.append((ny, nx, dist + 1))
+
+    if logger:
+        logger.debug(f"Costmap: Obstacles inflated by {EXPANSION_SIZE} cells using BFS.")
     return data
 
 class Robot:
@@ -170,7 +240,7 @@ class Robot:
         self.node = node
         self.position = Point()
         self.rotation = 0.0
-        self.arr_info_node = True  # Start by needing a target
+        self.arr_info_node = True
         self.laser_crashed_value = False
         self.next_target_node = []
         self.record_info_node = []
@@ -180,56 +250,35 @@ class Robot:
         self.laser_msg = None
         self.record_info_node = [(self.position.x, self.position.y)]
 
-        self.other_robots_positions = other_robots_positions  # Shared among robots
-        self.lock = lock  # For thread-safe access to shared data
-
-        # Use the shared tf_buffer
+        self.other_robots_positions = other_robots_positions
+        self.lock = lock
         self.tf_buffer = tf_buffer
 
-        # Publishers and Subscribers
         self.cmd_vel_pub = node.create_publisher(Twist, '/' + self.robot_name + '/cmd_vel', 10)
         self.laser_sub = node.create_subscription(LaserScan, '/' + self.robot_name + '/scan', self.laser_callback, 10)
-        
-        # Subscription to the robot's partition
-        self.partition_sub = node.create_subscription(GridCells, '/' + self.robot_name + '/partition', self.partition_callback, 10)
-        self.partition_cells = []  # To store the partition cells
-
-        # Visualization Publishers
         self.planned_path_pub = node.create_publisher(Path, '/' + self.robot_name + '/planned_path', 10)
         self.goal_marker_pub = node.create_publisher(Marker, '/' + self.robot_name + '/goal_current', 10)
         self.robot_path_pub = node.create_publisher(Path, '/' + self.robot_name + '/robot_path', 10)
         self.goals_marker_pub = node.create_publisher(MarkerArray, '/' + self.robot_name + '/goals_history', 10)
         self.goals_history = []
 
-        # For path planning and navigation
         self.path = []
         self.path_index = 0
         self.traversed_path = []
-
-        # Other variables
         self.arrived = False
 
-        # Timer for controlling the robot
-        self.timer_period = 0.1  # seconds
+        self.timer_period = 0.1
         self.timer = node.create_timer(self.timer_period, self.timer_callback)
 
         self.node.get_logger().info(f"{self.robot_name}: Robot initialized.")
 
     def laser_callback(self, msg):
-        self.laser_msg = msg  # Store the entire message for angle_min, angle_increment
+        self.laser_msg = msg
         self.laser_msg_range_max = msg.range_max
         self.laser_values = msg.ranges
         self.node.get_logger().debug(f"{self.robot_name}: Laser scan received with {len(msg.ranges)} ranges.")
 
-    def partition_callback(self, msg):
-        self.partition_cells = msg.cells
-        self.node.get_logger().debug(f"{self.robot_name}: Partition received with {len(msg.cells)} cells.")
-
     def update_pose(self):
-        """
-        Update the robot's current position and orientation using tf2 transformations.
-        """
-        # Attempt to get the transform from 'map' to the robot's base frame
         base_frames = [self.robot_name + '/base_footprint', self.robot_name + '/base_link']
         found_transform = False
         trans = None
@@ -244,27 +293,24 @@ class Robot:
                 continue
         if not found_transform:
             self.node.get_logger().error(f"{self.robot_name}: Could not find any valid base frame.")
-            # Handle error, e.g., stop the robot
             return False
-        # Extract position and orientation
+
         self.position.x = trans.transform.translation.x
         self.position.y = trans.transform.translation.y
         self.position.z = trans.transform.translation.z
         q = trans.transform.rotation
         self.rotation = euler_from_quaternion_func(q.x, q.y, q.z, q.w)
         self.node.get_logger().debug(f"{self.robot_name}: Updated pose to x={self.position.x}, y={self.position.y}, yaw={self.rotation}")
-        # Update shared position
+
         with self.lock:
             self.other_robots_positions[self.robot_name] = (self.position.x, self.position.y)
         return True
 
     def timer_callback(self):
-        # Update pose
         if not self.update_pose():
-            # Could not update pose, skip this cycle
             self.node.get_logger().warn(f"{self.robot_name}: Skipping cycle due to pose update failure.")
             return
-        # Main control loop
+
         self.check_for_collisions()
         if self.arr_info_node or not self.next_target_node:
             self.select_target()
@@ -278,225 +324,70 @@ class Robot:
                 self.publish_robot_path()
 
     def check_for_collisions(self):
-        # Check for potential collisions
         if self.laser_values:
-            obstacle_detected = False
-            for distance in self.laser_values:
-                if distance < 0.2:
-                    obstacle_detected = True
-                    break
+            obstacle_detected = any(d < 0.2 for d in self.laser_values if d > 0.0)
             if obstacle_detected:
                 self.laser_crashed_value = True
                 twist = Twist()
                 twist.linear.x = 0.0
                 twist.angular.z = 0.0
                 self.cmd_vel_pub.publish(twist)
-                self.node.get_logger().warn(f"{self.robot_name}: Obstacle detected within 0.2 meters. Stopping.")
-                # Optionally, implement avoidance or re-planning here instead of stopping
+                self.node.get_logger().warn(f"{self.robot_name}: Obstacle detected <0.2m. Stopping and waiting for new target.")
                 self.arr_info_node = True
-                # Optionally, you can return here to prioritize collision avoidance
         else:
             self.node.get_logger().debug(f"{self.robot_name}: No laser data available.")
 
     def select_target(self):
-        """
-        Select the next target for the robot.
-        Priority is given to frontier-based exploration. If no frontiers are available,
-        the existing method based on laser scans and Min-Omega heuristic is used.
-        """
-        frontiers = self.detect_frontiers()
-        if frontiers:
-            # Select a frontier goal
-            self.next_target_node = self.select_frontier_goal(frontiers)
-            self.record_info_node.append(self.next_target_node)
-            self.node.get_logger().info(f"{self.robot_name}: Frontier-based target selected at ({self.next_target_node[0]}, {self.next_target_node[1]})")
-            self.arr_info_node = False
-            self.arrived = False
-            self.path = []
-            self.path_index = 0
-            # Publish goal marker
-            self.publish_goal_marker(self.next_target_node[0], self.next_target_node[1])
-            # Create and store goal marker
-            self.create_goal_marker(self.next_target_node[0], self.next_target_node[1])
-        else:
-            # Fallback to existing method based on laser scans
-            self.node.get_logger().debug(f"{self.robot_name}: No frontiers detected. Falling back to laser-based target selection.")
-            option_target_point = []
-            if self.laser_values is not None and self.laser_msg is not None:
-                angle_increment = self.laser_msg.angle_increment
-                angle_min = self.laser_msg.angle_min
-                for i, distance in enumerate(self.laser_values):
-                    if distance == float('inf') or distance >= self.laser_msg_range_max:
-                        angle = i * angle_increment + angle_min + self.rotation
-                        target_x = self.position.x + self.laser_msg_range_max * math.cos(angle)
-                        target_y = self.position.y + self.laser_msg_range_max * math.sin(angle)
-                        option_target_point.append([target_x, target_y])
-                self.node.get_logger().debug(f"{self.robot_name}: {len(option_target_point)} potential target points generated from laser scan.")
-                # Use Voronoi algorithm
-                voronoi_points = self.voronoi_select_point(option_target_point)
-                if voronoi_points:
-                    # Use Min-Omega heuristic to select the next target
-                    self.next_target_node = self.get_min_Omega_distance_point(voronoi_points)
+        option_target_point = []
+        if self.laser_values is not None and self.laser_msg is not None:
+            angle_increment = self.laser_msg.angle_increment
+            angle_min = self.laser_msg.angle_min
+            for i, distance in enumerate(self.laser_values):
+                if distance == float('inf') or distance >= self.laser_msg_range_max:
+                    angle = i * angle_increment + angle_min + self.rotation
+                    target_x = self.position.x + self.laser_msg_range_max * math.cos(angle)
+                    target_y = self.position.y + self.laser_msg_range_max * math.sin(angle)
+                    option_target_point.append([target_x, target_y])
+            self.node.get_logger().debug(f"{self.robot_name}: {len(option_target_point)} potential target points generated from laser scan.")
+            voronoi_points = self.voronoi_select_point(option_target_point)
+            if voronoi_points:
+                self.next_target_node = self.get_min_Omega_distance_point(voronoi_points)
+                self.record_info_node.append(self.next_target_node)
+                self.node.get_logger().info(f"{self.robot_name}: New target position selected at ({self.next_target_node[0]}, {self.next_target_node[1]})")
+                self.arr_info_node = False
+                self.arrived = False
+                self.path = []
+                self.path_index = 0
+                self.publish_goal_marker(self.next_target_node[0], self.next_target_node[1])
+                self.create_goal_marker(self.next_target_node[0], self.next_target_node[1])
+            else:
+                self.node.get_logger().warning(f"{self.robot_name}: No valid Voronoi point found. Using all option points.")
+                if option_target_point:
+                    self.next_target_node = self.get_min_Omega_distance_point(option_target_point)
                     self.record_info_node.append(self.next_target_node)
-                    self.node.get_logger().info(f"{self.robot_name}: Laser-based target selected at ({self.next_target_node[0]}, {self.next_target_node[1]})")
+                    self.node.get_logger().info(f"{self.robot_name}: New target position selected at ({self.next_target_node[0]}, {self.next_target_node[1]})")
                     self.arr_info_node = False
                     self.arrived = False
                     self.path = []
                     self.path_index = 0
-                    # Publish goal marker
                     self.publish_goal_marker(self.next_target_node[0], self.next_target_node[1])
-                    # Create and store goal marker
                     self.create_goal_marker(self.next_target_node[0], self.next_target_node[1])
                 else:
-                    self.node.get_logger().warning(f"{self.robot_name}: No valid Min-Omega point found. Using all option points.")
-                    if option_target_point:
-                        # Use Min-Omega heuristic on all option points
-                        self.next_target_node = self.get_min_Omega_distance_point(option_target_point)
-                        self.record_info_node.append(self.next_target_node)
-                        self.node.get_logger().info(f"{self.robot_name}: Laser-based target selected at ({self.next_target_node[0]}, {self.next_target_node[1]})")
-                        self.arr_info_node = False
-                        self.arrived = False
-                        self.path = []
-                        self.path_index = 0
-                        # Publish goal marker
-                        self.publish_goal_marker(self.next_target_node[0], self.next_target_node[1])
-                        # Create and store goal marker
-                        self.create_goal_marker(self.next_target_node[0], self.next_target_node[1])
-                    else:
-                        self.node.get_logger().error(f"{self.robot_name}: No option target points available from laser scan.")
-            else:
-                self.node.get_logger().warning(f"{self.robot_name}: Waiting for laser scan data to generate target points.")
-
-    def detect_frontiers(self):
-        """
-        Detect frontiers within the robot's partition.
-        Frontiers are groups of free cells adjacent to unknown cells.
-        """
-        frontiers = set()
-
-        if self.node.map_data is None or not self.partition_cells:
-            self.node.get_logger().debug(f"{self.robot_name}: Cannot detect frontiers, map or partition not available.")
-            return list(frontiers)
-
-        # Map data: 0=free, 100=occupied, -1=unknown
-        # Iterate through partition cells
-        for cell in self.partition_cells:
-            x = cell.x
-            y = cell.y
-            # Convert (x, y) to map indices
-            j = int((x - self.node.origin_x) / self.node.resolution)
-            i = int((y - self.node.origin_y) / self.node.resolution)
-
-            if i < 0 or i >= self.node.map_height or j < 0 or j >= self.node.map_width:
-                continue
-
-            if self.node.map_data[i][j] != 0:
-                continue  # Not a free cell
-
-            # Check 8-connected neighbors for unknown cells
-            for di in [-1, 0, 1]:
-                for dj in [-1, 0, 1]:
-                    if di == 0 and dj == 0:
-                        continue
-                    ni = i + di
-                    nj = j + dj
-                    if ni < 0 or ni >= self.node.map_height or nj < 0 or nj >= self.node.map_width:
-                        continue
-                    if self.node.map_data[ni][nj] == -1:
-                        frontiers.add((x, y))
-                        break  # No need to check other neighbors for this cell
-
-        self.node.get_logger().debug(f"{self.robot_name}: Detected {len(frontiers)} individual frontiers.")
-
-        # Group frontiers into connected clusters
-        frontier_clusters = self.group_frontiers(frontiers)
-        self.node.get_logger().debug(f"{self.robot_name}: Grouped into {len(frontier_clusters)} frontier clusters.")
-
-        return frontier_clusters
-
-    def group_frontiers(self, frontiers, connectivity=8):
-        """
-        Group frontiers into connected clusters using a simple flood-fill algorithm.
-        Returns a list of clusters, each cluster is a list of (x, y) tuples.
-        """
-        clusters = []
-        frontiers = set(frontiers)
-
-        while frontiers:
-            current = frontiers.pop()
-            cluster = [current]
-            queue = [current]
-
-            while queue:
-                point = queue.pop(0)
-                x, y = point
-                # Check neighboring points
-                neighbors = [
-                    (x + self.node.resolution, y),
-                    (x - self.node.resolution, y),
-                    (x, y + self.node.resolution),
-                    (x, y - self.node.resolution),
-                    (x + self.node.resolution, y + self.node.resolution),
-                    (x + self.node.resolution, y - self.node.resolution),
-                    (x - self.node.resolution, y + self.node.resolution),
-                    (x - self.node.resolution, y - self.node.resolution),
-                ]
-
-                for neighbor in neighbors:
-                    if neighbor in frontiers:
-                        frontiers.remove(neighbor)
-                        cluster.append(neighbor)
-                        queue.append(neighbor)
-
-            clusters.append(cluster)
-
-        return clusters
-
-    def select_frontier_goal(self, frontier_clusters):
-        """
-        Select the best frontier cluster to set as the goal.
-        Prioritize larger frontiers, and among those, select the closest one.
-        """
-        if not frontier_clusters:
-            self.node.get_logger().error(f"{self.robot_name}: No frontier clusters available for selection.")
-            return None
-
-        # Calculate size and centroid of each cluster
-        frontier_info = []
-        for cluster in frontier_clusters:
-            size = len(cluster)
-            centroid_x = sum([point[0] for point in cluster]) / size
-            centroid_y = sum([point[1] for point in cluster]) / size
-            distance = math.hypot(centroid_x - self.position.x, centroid_y - self.position.y)
-            frontier_info.append({
-                'size': size,
-                'centroid': (centroid_x, centroid_y),
-                'distance': distance
-            })
-
-        # Sort clusters by size descending, then by distance ascending
-        frontier_info.sort(key=lambda x: (-x['size'], x['distance']))
-
-        # Select the first cluster's centroid as the goal
-        best_frontier = frontier_info[0]
-        self.node.get_logger().debug(f"{self.robot_name}: Selected frontier with size {best_frontier['size']} at {best_frontier['centroid']} with distance {best_frontier['distance']}")
-        return best_frontier['centroid']
+                    self.node.get_logger().error(f"{self.robot_name}: No option target points available from laser scan.")
+        else:
+            self.node.get_logger().warning(f"{self.robot_name}: Waiting for laser scan data to generate target points.")
 
     def follow_path(self):
-        # Implement pure pursuit to follow the path
         if self.path_index >= len(self.path):
             self.node.get_logger().debug(f"{self.robot_name}: Reached end of path.")
             return
 
-        # Check for obstacles blocking the path
         if self.is_path_obstructed():
             self.node.get_logger().info(f"{self.robot_name}: Path obstructed, re-planning.")
             self.arr_info_node = True
             self.next_target_node = []
             self.path = []
             self.path_index = 0
-            # **Do not call plan_path() here**
-            # Allow timer_callback to handle re-planning
             return
 
         twist = Twist()
@@ -507,7 +398,7 @@ class Robot:
         twist.linear.x = v
         twist.angular.z = omega
         self.cmd_vel_pub.publish(twist)
-        self.node.get_logger().debug(f"{self.robot_name}: Published cmd_vel with linear.x={v}, angular.z={omega}")
+        self.node.get_logger().debug(f"{self.robot_name}: Published cmd_vel with linear.x={v:.3f}, angular.z={omega:.3f}")
 
         if self.path_index >= len(self.path) - 1:
             self.arr_info_node = True
@@ -519,27 +410,18 @@ class Robot:
         self.arr_info_node = True
         self.arrived = True
         self.node.get_logger().info(f"{self.robot_name}: Reached target at {self.next_target_node}.")
-        # Publish goal marker history
         self.publish_goal_markers()
 
     def get_min_Omega_distance_point(self, option_target_points):
-        """
-        Use Min-Omega heuristic to select the best target point.
-        """
         min_Omega = float('inf')
         best_point = None
-        # Last target position
         if len(self.record_info_node) >= 1:
             last_target = self.record_info_node[-1]
         else:
-            # If no previous target, use current position
             last_target = (self.position.x, self.position.y)
         for point in option_target_points:
-            # Distance between last target and candidate point (d_ik)
             d_ik = math.hypot(point[0] - last_target[0], point[1] - last_target[1])
-            # Distance between current position and candidate point (phi_ik)
             phi_ik = math.hypot(point[0] - self.position.x, point[1] - self.position.y)
-            # Calculate Omega
             Omega = LAMBDA_VALUE * d_ik + (1 - LAMBDA_VALUE) * phi_ik
             self.node.get_logger().debug(f"{self.robot_name}: Omega for point ({point[0]}, {point[1]}): {Omega}")
             if Omega < min_Omega:
@@ -547,12 +429,10 @@ class Robot:
                 best_point = point
         if best_point is None:
             self.node.get_logger().error(f"{self.robot_name}: No valid point found using Min-Omega heuristic.")
-            # Fallback to a random point
             best_point = random.choice(option_target_points)
         return best_point
 
     def voronoi_select_point(self, option_target_point):
-        # Implement Voronoi selection based on other robots' positions
         voronoi_option_target_point = []
         with self.lock:
             other_robot_positions = [pos for name, pos in self.other_robots_positions.items() if name != self.robot_name]
@@ -560,6 +440,7 @@ class Robot:
             self.node.get_logger().debug(f"{self.robot_name}: Other robots positions for Voronoi: {other_robot_positions}")
         if not other_robot_positions:
             return option_target_point
+
         for point in option_target_point:
             is_closest = True
             distance_to_self = sqrt(pow(point[0] - self.position.x, 2) + pow(point[1] - self.position.y, 2))
@@ -574,23 +455,14 @@ class Robot:
         return voronoi_option_target_point if voronoi_option_target_point else option_target_point
 
     def reached_target(self):
-        # Hardcoded distance threshold to consider the target reached
-        REACHED_THRESHOLD = 0.3  # Distance in meters
-
         if self.next_target_node:
             distance = sqrt(pow(self.position.x - self.next_target_node[0], 2) + pow(self.position.y - self.next_target_node[1], 2))
             self.node.get_logger().debug(f"{self.robot_name}: Distance to target: {distance}")
-            if distance < REACHED_THRESHOLD:
-                self.node.get_logger().info(f"{self.robot_name}: Reached target within {REACHED_THRESHOLD} meters.")
+            if distance < 0.5:
                 return True
         return False
 
-
     def find_nearest_free_cell(self, map_array, y, x, search_radius=5):
-        """
-        Find the nearest free cell to the given (y, x) position within the search_radius.
-        Returns the (y, x) tuple of the nearest free cell or None if not found.
-        """
         for radius in range(1, search_radius + 1):
             for dy in range(-radius, radius + 1):
                 for dx in range(-radius, radius + 1):
@@ -602,15 +474,13 @@ class Robot:
         return None
 
     def plan_path(self):
-        # Use A* to plan path to next_target_node
         if self.node.map_data is None:
             self.node.get_logger().error(f"{self.robot_name}: No map data available for path planning.")
             return
-        # Ensure next_target_node is not empty
         if not self.next_target_node:
             self.node.get_logger().error(f"{self.robot_name}: No target node available for path planning.")
             return
-        # Compute required map bounds to include current position and target
+
         map_x_min = self.node.origin_x
         map_y_min = self.node.origin_y
         map_x_max = self.node.origin_x + self.node.map_width * self.node.resolution
@@ -630,16 +500,12 @@ class Robot:
         if self.node.get_logger().get_effective_level() <= rclpy.logging.LoggingSeverity.DEBUG:
             self.node.get_logger().debug(f"{self.robot_name}: Planning path with map bounds x:[{new_x_min}, {new_x_max}], y:[{new_y_min}, {new_y_max}], resolution={self.node.resolution}")
 
-        # Create new map array initialized to -1 (unknown)
         new_map_array = np.full((new_map_height, new_map_width), -1, dtype=int)
 
-        # Compute offsets
         offset_x = int((self.node.origin_x - new_x_min) / self.node.resolution)
         offset_y = int((self.node.origin_y - new_y_min) / self.node.resolution)
 
-        # Copy known map data into new map array
         try:
-            # Ensure indices do not exceed the new map size
             end_y = min(offset_y + self.node.map_height, new_map_height)
             end_x = min(offset_x + self.node.map_width, new_map_width)
             new_map_array[offset_y:end_y, offset_x:end_x] = self.node.map_data[:end_y - offset_y, :end_x - offset_x]
@@ -648,7 +514,6 @@ class Robot:
             self.node.get_logger().error(f"{self.robot_name}: Error copying map data: {e}")
             return
 
-        # Convert current position and target to new map indices
         current_x_index = int((self.position.x - new_x_min) / self.node.resolution)
         current_y_index = int((self.position.y - new_y_min) / self.node.resolution)
         target_x_index = int((self.next_target_node[0] - new_x_min) / self.node.resolution)
@@ -659,7 +524,6 @@ class Robot:
 
         map_array = new_map_array
 
-        # Handle current position inside an obstacle
         if map_array[current_y_index][current_x_index] == 1:
             self.node.get_logger().warn(f"{self.robot_name}: Current position is inside an obstacle. Attempting to find the nearest free cell.")
             nearest_free = self.find_nearest_free_cell(map_array, current_y_index, current_x_index)
@@ -670,7 +534,6 @@ class Robot:
                 self.node.get_logger().error(f"{self.robot_name}: No free cell found near the current position.")
                 return
 
-        # Handle target position inside an obstacle
         if map_array[target_y_index][target_x_index] == 1:
             self.node.get_logger().warn(f"{self.robot_name}: Target position is inside an obstacle. Attempting to find the nearest free cell.")
             nearest_free = self.find_nearest_free_cell(map_array, target_y_index, target_x_index)
@@ -684,52 +547,43 @@ class Robot:
         path_indices = astar(map_array, (current_y_index, current_x_index), (target_y_index, target_x_index), self.node.get_logger())
 
         if path_indices:
-            self.path = [(x * self.node.resolution + new_x_min, y * self.node.resolution + new_y_min) for y, x in path_indices]
+            self.path = [(x * self.node.resolution + new_x_min, y * self.node.resolution + new_y_min) for (y, x) in path_indices]
             self.path = bspline_planning(self.path, len(self.path) * 5, self.node.get_logger())
             self.path_index = 0
             self.node.get_logger().info(f"{self.robot_name}: Path planned with {len(self.path)} waypoints.")
-            # Publish planned path
             self.publish_planned_path(self.path)
         else:
             self.node.get_logger().error(f"{self.robot_name}: Path planning failed using A*.")
 
     def is_path_obstructed(self):
-        # Check if there are obstacles ahead along the path
         if self.laser_values is None or self.laser_msg is None:
             self.node.get_logger().debug(f"{self.robot_name}: No laser data available to check for path obstruction.")
-            return False  # Cannot determine, assume no obstruction
+            return False
 
-        # Get the angle to the next point in the path
         if self.path_index >= len(self.path):
             self.node.get_logger().debug(f"{self.robot_name}: Path index {self.path_index} out of bounds.")
-            return False  # No path ahead
+            return False
 
         next_point = self.path[self.path_index]
         angle_to_next_point = math.atan2(next_point[1] - self.position.y, next_point[0] - self.position.x)
         angle_diff = angle_to_next_point - self.rotation
-
-        # Normalize angle_diff to [-pi, pi]
         angle_diff = (angle_diff + math.pi) % (2 * math.pi) - math.pi
 
-        # Determine indices in laser scan that correspond to the direction ahead
         angle_increment = self.laser_msg.angle_increment
         angle_min = self.laser_msg.angle_min
-
         index_center = int((angle_diff - angle_min) / angle_increment)
-        angle_range = math.radians(20)  # +/- 20 degrees
+        angle_range = math.radians(20)
         index_range = int(angle_range / angle_increment)
 
-        # Check laser scan readings in the range ahead
         for i in range(index_center - index_range, index_center + index_range):
             if 0 <= i < len(self.laser_values):
                 distance = self.laser_values[i]
-                if distance < 0.5 and distance > 0.0:  # Obstacle within 0.5 meters
-                    self.node.get_logger().warn(f"{self.robot_name}: Obstacle detected at distance {distance} meters within path ahead.")
+                if 0.0 < distance < 0.5:
+                    self.node.get_logger().warn(f"{self.robot_name}: Obstacle detected at distance {distance}m in path direction.")
                     return True
         return False
 
     def publish_planned_path(self, path):
-        """Publish the planned path for this robot."""
         path_msg = Path()
         path_msg.header.frame_id = 'map'
         path_msg.header.stamp = self.node.get_clock().now().to_msg()
@@ -741,19 +595,18 @@ class Robot:
             pose.pose.position.x = p[0]
             pose.pose.position.y = p[1]
             pose.pose.position.z = 0.0
-            pose.pose.orientation.w = 1.0  # Assuming no rotation
+            pose.pose.orientation.w = 1.0
             poses.append(pose)
         path_msg.poses = poses
         self.planned_path_pub.publish(path_msg)
         self.node.get_logger().debug(f"{self.robot_name}: Planned path published with {len(path)} poses.")
 
     def publish_goal_marker(self, goal_x, goal_y):
-        """Publish a single goal marker for this robot."""
         marker = Marker()
         marker.header.frame_id = 'map'
         marker.header.stamp = self.node.get_clock().now().to_msg()
         marker.ns = 'goal'
-        marker.id = 0  # Always use 0 for the current goal
+        marker.id = 0
         marker.type = Marker.SPHERE
         marker.action = Marker.ADD
         marker.pose.position.x = goal_x
@@ -771,7 +624,6 @@ class Robot:
         self.node.get_logger().debug(f"{self.robot_name}: Goal marker published at ({goal_x}, {goal_y}).")
 
     def create_goal_marker(self, goal_x, goal_y):
-        """Create and store a goal marker for this robot."""
         marker = Marker()
         marker.header.frame_id = 'map'
         marker.header.stamp = self.node.get_clock().now().to_msg()
@@ -794,14 +646,12 @@ class Robot:
         self.node.get_logger().debug(f"{self.robot_name}: Goal marker added to history at ({goal_x}, {goal_y}).")
 
     def publish_goal_markers(self):
-        """Publish all goal markers history for this robot."""
         marker_array = MarkerArray()
         marker_array.markers = self.goals_history
         self.goals_marker_pub.publish(marker_array)
         self.node.get_logger().debug(f"{self.robot_name}: Published {len(marker_array.markers)} goal markers.")
 
     def publish_robot_path(self):
-        """Publish the traversed path followed by this robot."""
         self.traversed_path.append(Point(x=self.position.x, y=self.position.y, z=self.position.z))
 
         path_msg = Path()
@@ -824,25 +674,19 @@ class MultiRobotControl(Node):
         super().__init__('multi_robot_control_node')
         self.robot_names = ['tb3_0', 
                             'tb3_1', 
-                            'tb3_2', 
-                            # 'tb3_3'
-                            ]
+                            'tb3_2']
         self.robots = {}
-        self.other_robots_positions = {}  # Shared positions among robots
-        self.lock = threading.Lock()  # Lock for thread-safe access
+        self.other_robots_positions = {}
+        self.lock = threading.Lock()
 
-        # Initialize a single tf2 buffer and listener
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self, spin_thread=True)
-        # Allow time for the listener to fill its buffer
         time.sleep(1.0)
 
         for robot_name in self.robot_names:
             self.other_robots_positions[robot_name] = (0.0, 0.0)
-            # Pass the shared tf_buffer to each Robot
             self.robots[robot_name] = Robot(robot_name, self, self.other_robots_positions, self.lock, self.tf_buffer)
 
-        # Map subscription
         self.map_data = None
         self.map_width = None
         self.map_height = None
@@ -853,21 +697,12 @@ class MultiRobotControl(Node):
         self.map_sub = self.create_subscription(OccupancyGrid, '/map', self.map_callback, 10)
         self.get_logger().info("MultiRobotControl node initialized and subscribed to /map.")
 
-        # Partition publishers
         self.partition_publishers = {}
         for robot_name in self.robot_names:
             self.partition_publishers[robot_name] = self.create_publisher(GridCells, f'/{robot_name}/partition', 10)
 
         # Timer for publishing partitions
-        self.partition_timer = self.create_timer(1.0, self.publish_partitions)  # Every 1 second
-
-        # Target explored region rate
-        self.target_explored_region_rate = TARGET_EXPLORE_RATE
-        self.exploration_completed = False
-
-        # Timer to track exploration duration
-        self.exploration_start_time = None
-        self.exploration_end_time = None
+        self.partition_timer = self.create_timer(1.0, self.publish_partitions)
 
     def map_callback(self, msg):
         self.map_width = msg.info.width
@@ -876,104 +711,41 @@ class MultiRobotControl(Node):
         self.origin_x = msg.info.origin.position.x
         self.origin_y = msg.info.origin.position.y
 
-        # Process map data
         processed_map = costmap(msg.data, self.map_width, self.map_height, self.resolution, self.get_logger())
         self.map_data = processed_map
         self.get_logger().debug("Map data received and processed.")
 
-        # Initialize exploration start time if not already set
-        if self.exploration_start_time is None:
-            self.exploration_start_time = self.get_clock().now()
-            self.get_logger().info("Exploration started. Timer initialized.")
-
-        # Use map bounds as room bounds
-        min_j = 0
-        max_j = self.map_width
-        min_i = 0
-        max_i = self.map_height
-
-        # Total cells within room
-        total_cells = self.map_data.size
-
-        # Explored cells: cells that are free (0) or occupied (1)
-        explored_cells = np.count_nonzero(self.map_data >= 0)
-
-        # Compute explored rate
-        if total_cells > 0:
-            current_explored_rate = explored_cells / total_cells
-            self.get_logger().info(f"Explored Region Rate: {current_explored_rate*100:.2f}%")
-
-            # Check if target explored rate is achieved
-            if current_explored_rate >= self.target_explored_region_rate:
-                if not self.exploration_completed:
-                    self.exploration_completed = True
-                    self.exploration_end_time = self.get_clock().now()
-                    elapsed_time = (self.exploration_end_time - self.exploration_start_time).nanoseconds / 1e9
-                    self.get_logger().info(f"Target explored region rate of {self.target_explored_region_rate*100:.2f}% achieved.")
-                    self.get_logger().info(f"Exploration completed in {elapsed_time:.2f} seconds.")
-                    self.handle_exploration_completion()
-        else:
-            self.get_logger().warn("Room boundaries result in zero cells.")
-
-    def handle_exploration_completion(self):
-        """
-        Handle the event when the target explored region rate is achieved.
-        Actions can include stopping all robots, logging information, etc.
-        """
-        self.get_logger().info("Exploration target reached. Initiating shutdown sequence.")
-
-        # Stop all robots by publishing zero velocities
-        stop_twist = Twist()
-        stop_twist.linear.x = 0.0
-        stop_twist.angular.z = 0.0
-        for robot_name, robot in self.robots.items():
-            robot.cmd_vel_pub.publish(stop_twist)
-            self.get_logger().info(f"Published stop command to {robot_name}.")
-
-        # Optionally, perform other actions such as saving logs, shutting down the node, etc.
-        # For example, shutting down after stopping the robots:
-        self.get_logger().info("All robots stopped. Shutting down the node.")
-        rclpy.shutdown()
-
     def publish_partitions(self):
-        """Compute and publish the partitions for each robot."""
         if self.map_data is None:
             self.get_logger().warning("Map data not available for partitioning.")
             return
 
-        # Get robot positions
         with self.lock:
             robot_positions = self.other_robots_positions.copy()
 
-        # Initialize partitions
         partitions = {robot_name: [] for robot_name in self.robot_names}
 
-        # Loop over map cells
         for i in range(self.map_height):
             for j in range(self.map_width):
-                if self.map_data[i][j] == 0:  # Free space
-                    # Compute cell position
+                if self.map_data[i][j] == 0:
                     x = self.origin_x + (j + 0.5) * self.resolution
                     y = self.origin_y + (i + 0.5) * self.resolution
 
-                    # Find closest robot
                     min_distance = float('inf')
                     closest_robot = None
 
                     for robot_name, position in robot_positions.items():
                         dx = position[0] - x
                         dy = position[1] - y
-                        distance = dx * dx + dy * dy  # Use squared distance
+                        distance = dx * dx + dy * dy
 
                         if distance < min_distance:
                             min_distance = distance
                             closest_robot = robot_name
 
-                    # Add cell to partition
                     if closest_robot is not None:
                         partitions[closest_robot].append(Point(x=x, y=y, z=0.0))
 
-        # For each robot, publish GridCells
         for robot_name, cells in partitions.items():
             grid_cells_msg = GridCells()
             grid_cells_msg.header.frame_id = 'map'
@@ -992,7 +764,6 @@ def main(args=None):
     except KeyboardInterrupt:
         multi_robot_control.get_logger().info("Shutting down MultiRobotControl node.")
     finally:
-        # Clean up
         for robot in multi_robot_control.robots.values():
             robot.cmd_vel_pub.destroy()
             robot.planned_path_pub.destroy()
