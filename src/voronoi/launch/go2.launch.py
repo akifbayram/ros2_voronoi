@@ -49,7 +49,7 @@ def launch_setup(context, *args, **kwargs):
 
     for i in range(robot_count):
         name = f'robot{i}'
-        urdf_path = os.path.join(voronoi_pkg, 'models', name, 'model.sdf')
+        urdf_path = os.path.join(voronoi_pkg, 'models', 'go2', 'go2.urdf')
 
         # Read and modify URDF for the robot
         with open(robot_desc_path, 'r') as infp:
@@ -60,11 +60,11 @@ def launch_setup(context, *args, **kwargs):
         robot_state_publisher = Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
-            name='robot_state_publisher',
+            name='robot_state_publisher_go2',
             namespace=name,
             output='screen',
             parameters=[{
-                'use_sim_time': True,
+                'use_sim_time': False,
                 'robot_description': robot_desc,
             }],
         )
@@ -76,7 +76,7 @@ def launch_setup(context, *args, **kwargs):
             name='async_slam_toolbox_node',
             namespace=name,
             parameters=[{
-                'use_sim_time': True,
+                'use_sim_time': False,
                 'odom_frame': f'{name}/odom',
                 'base_frame': f'{name}/base_link',
                 'scan_topic': 'scan',

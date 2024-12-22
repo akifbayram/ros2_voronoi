@@ -25,6 +25,6 @@ def generate_launch_description():
             output='screen',
             arguments=['-d', os.path.join(
                 get_package_share_directory('merge_map'), 'config', 'merge_map.rviz')],
-            parameters=[{'use_sim_time': True}]
+            parameters=[{'use_sim_time': False}]
         ),
     ])
