@@ -56,46 +56,6 @@ def launch_setup(context, *args, **kwargs):
             robot_desc = infp.read()
         robot_desc = add_prefix_to_urdf(robot_desc, f'{name}/')
 
-        # Robot State Publisher
-        robot_state_publisher = Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher_go2',
-            namespace=name,
-            output='screen',
-            parameters=[{
-                'use_sim_time': False,
-                'robot_description': robot_desc,
-            }],
-        )
-
-        # SLAM Toolbox
-        async_slam_toolbox = Node(
-            package='slam_toolbox',
-            executable='async_slam_toolbox_node',
-            name='async_slam_toolbox_node',
-            namespace=name,
-            parameters=[{
-                'use_sim_time': False,
-                'odom_frame': f'{name}/odom',
-                'base_frame': f'{name}/base_link',
-                'scan_topic': 'scan',
-                'map_frame': f'{name}/map',
-                'minimum_travel_distance': 0.3,
-                'minimum_travel_heading': 0.3,
-                'map_update_interval': 1.0,
-                'publish_period': 1.0,
-                'resolution': 0.05,
-            }],
-            remappings=[
-                ("/map", "map"),
-                ("/map_metadata", "map_metadata"),
-                ("/slam_toolbox/scan_visualization", "slam_toolbox/scan_visualization"),
-                ("/slam_toolbox/graph_visualization", "slam_toolbox/graph_visualization"),
-            ],
-            output='screen',
-        )
-
         # Static Transform Publisher
         static_transform_publisher = Node(
             package='tf2_ros',
@@ -105,30 +65,9 @@ def launch_setup(context, *args, **kwargs):
             output='screen',
         )
 
-        # Include Nav2 for the robot
-        # nav2_launch = IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(
-        #         os.path.join(nav2_pkg, 'launch', 'bringup_launch.py')  # Adjust path if different
-        #     ),
-        #     launch_arguments={
-        #         'namespace': name,
-        #         'use_namespace': 'True',
-        #         'slam': 'True',  # Assuming SLAM is handled by slam_toolbox
-        #         'map': '',  # Ensure map is correctly set or passed
-        #         'use_sim_time': 'True',
-        #         'autostart': 'True',
-        #         'params_file': os.path.join(voronoi_pkg, 'params',  f'{name}_nav2_params.yaml'),  # Create per-robot params
-        #     }.items(),
-        # )
-
         # Add nodes to the list
         nodes.extend([
-            # spawn_robot,
-            robot_state_publisher,
-            async_slam_toolbox,
             static_transform_publisher,
-            # nav2_launch,  # Add Nav2 launch
-            # rviz  # Remove or comment out if individual RViz instances are not needed
         ])
 
     # Create a list to hold all launch actions
