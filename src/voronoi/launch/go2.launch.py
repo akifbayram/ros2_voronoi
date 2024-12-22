@@ -56,6 +56,18 @@ def launch_setup(context, *args, **kwargs):
             robot_desc = infp.read()
         robot_desc = add_prefix_to_urdf(robot_desc, f'{name}/')
 
+        # Robot State Publisher
+        robot_state_publisher = Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            name='robot_state_publisher_go2',
+            namespace=name,
+            output='screen',
+            parameters=[{
+                'use_sim_time': False,
+                'robot_description': robot_desc,
+            }],
+        )
         # Static Transform Publisher
         static_transform_publisher = Node(
             package='tf2_ros',
@@ -67,7 +79,10 @@ def launch_setup(context, *args, **kwargs):
 
         # Add nodes to the list
         nodes.extend([
+            robot_state_publisher,
             static_transform_publisher,
+            # nav2_launch,  # Add Nav2 launch
+            # rviz  # Remove or comment out if individual RViz instances are not needed
         ])
 
     # Create a list to hold all launch actions
