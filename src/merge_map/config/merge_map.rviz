@@ -4,8 +4,18 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /tb3_01/RobotModel1
         - /tb3_01/Information Node1
         - /tb3_31/Traveled Path1
+        - /robot01/tb3_0 Current Goal1
+        - /robot01/Traveled Path1/Topic1
+        - /robot01/Partition1
+        - /robot01/Partition1/Topic1
+        - /robot01/Information Node1
+        - /single1/tb3_0 Current Goal1
+        - /single1/Traveled Path1
+        - /single1/Partition1
+        - /single1/Information Node1
       Splitter Ratio: 0.47141191363334656
     Tree Height: 1286
   - Class: rviz_common/Selection
@@ -116,7 +126,7 @@ Visualization Manager:
           Enabled: true
           Name: tb3_0 Current Goal
           Namespaces:
-            goal: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -171,39 +181,6 @@ Visualization Manager:
             Expand Link Details: false
             Expand Tree: false
             Link Tree Style: Links in Alphabetic Order
-            tb3_0/base_footprint:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-            tb3_0/base_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_0/base_scan:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_0/caster_back_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_0/imu_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-            tb3_0/wheel_left_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_0/wheel_right_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
           Mass Properties:
             Inertia: false
             Mass: false
@@ -229,7 +206,7 @@ Visualization Manager:
           Enabled: true
           Name: Information Node
           Namespaces:
-            information_nodes: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -273,7 +250,7 @@ Visualization Manager:
           Enabled: true
           Name: tb3_1 Current Goal
           Namespaces:
-            goal: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -313,39 +290,6 @@ Visualization Manager:
             Expand Link Details: false
             Expand Tree: false
             Link Tree Style: Links in Alphabetic Order
-            tb3_1/base_footprint:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-            tb3_1/base_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_1/base_scan:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_1/caster_back_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_1/imu_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-            tb3_1/wheel_left_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_1/wheel_right_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
           Mass Properties:
             Inertia: false
             Mass: false
@@ -386,7 +330,7 @@ Visualization Manager:
           Enabled: true
           Name: Information Node
           Namespaces:
-            information_nodes: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -430,7 +374,7 @@ Visualization Manager:
           Enabled: true
           Name: Current Goal
           Namespaces:
-            goal: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -470,39 +414,6 @@ Visualization Manager:
             Expand Link Details: false
             Expand Tree: false
             Link Tree Style: Links in Alphabetic Order
-            tb3_2/base_footprint:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-            tb3_2/base_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_2/base_scan:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_2/caster_back_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_2/imu_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-            tb3_2/wheel_left_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
-            tb3_2/wheel_right_link:
-              Alpha: 1
-              Show Axes: false
-              Show Trail: false
-              Value: true
           Mass Properties:
             Inertia: false
             Mass: false
@@ -543,7 +454,7 @@ Visualization Manager:
           Enabled: true
           Name: Information Node
           Namespaces:
-            information_nodes: true
+            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -665,6 +576,414 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: tb3_3
+    - Class: rviz_common/Group
+      Displays:
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz_default_plugins/Path
+          Color: 25; 255; 0
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Billboards
+          Line Width: 0.10000000149011612
+          Name: tb3_0 Planned Path
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /robot0/planned_path
+          Value: true
+        - Class: rviz_default_plugins/Marker
+          Enabled: true
+          Name: tb3_0 Current Goal
+          Namespaces:
+            {}
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /robot0/goal_current
+          Value: true
+        - Alpha: 6
+          Buffer Length: 1
+          Class: rviz_default_plugins/Path
+          Color: 143; 240; 164
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Billboards
+          Line Width: 0.05000000074505806
+          Name: Traveled Path
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /robot0/robot_path
+          Value: true
+        - Alpha: 1
+          Class: rviz_default_plugins/RobotModel
+          Collision Enabled: false
+          Description File: ""
+          Description Source: Topic
+          Description Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /robot0/robot_description
+          Enabled: true
+          Links:
+            All Links Enabled: true
+            Expand Joint Details: false
+            Expand Link Details: false
+            Expand Tree: false
+            Link Tree Style: Links in Alphabetic Order
+            robot0/FL_calf:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FL_calflower:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FL_calflower1:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FL_foot:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FL_hip:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FL_thigh:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FR_calf:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FR_calflower:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FR_calflower1:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FR_foot:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FR_hip:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/FR_thigh:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/Head_lower:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/Head_upper:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RL_calf:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RL_calflower:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RL_calflower1:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RL_foot:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RL_hip:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RL_thigh:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RR_calf:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RR_calflower:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RR_calflower1:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RR_foot:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RR_hip:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/RR_thigh:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/base_footprint:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            robot0/base_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/front_camera:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            robot0/imu:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            robot0/map:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            robot0/odom:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            robot0/radar:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+          Mass Properties:
+            Inertia: false
+            Mass: false
+          Name: RobotModel
+          TF Prefix: ""
+          Update Interval: 0
+          Value: true
+          Visual Enabled: true
+        - Alpha: 0.25
+          Class: rviz_default_plugins/GridCells
+          Color: 25; 255; 0
+          Enabled: true
+          Name: Partition
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /robot0/partition
+          Value: true
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: true
+          Name: Information Node
+          Namespaces:
+            {}
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /tb3_0/information_nodes
+          Value: true
+      Enabled: true
+      Name: robot0
+    - Class: rviz_common/Group
+      Displays:
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz_default_plugins/Path
+          Color: 25; 255; 0
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Billboards
+          Line Width: 0.10000000149011612
+          Name: tb3_0 Planned Path
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /planned_path
+          Value: true
+        - Class: rviz_default_plugins/Marker
+          Enabled: true
+          Name: tb3_0 Current Goal
+          Namespaces:
+            {}
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /goal_current
+          Value: true
+        - Alpha: 6
+          Buffer Length: 1
+          Class: rviz_default_plugins/Path
+          Color: 143; 240; 164
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Billboards
+          Line Width: 0.05000000074505806
+          Name: Traveled Path
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /robot_path
+          Value: true
+        - Alpha: 1
+          Class: rviz_default_plugins/RobotModel
+          Collision Enabled: false
+          Description File: ""
+          Description Source: Topic
+          Description Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /robot_description
+          Enabled: true
+          Links:
+            All Links Enabled: true
+            Expand Joint Details: false
+            Expand Link Details: false
+            Expand Tree: false
+            Link Tree Style: Links in Alphabetic Order
+          Mass Properties:
+            Inertia: false
+            Mass: false
+          Name: RobotModel
+          TF Prefix: ""
+          Update Interval: 0
+          Value: true
+          Visual Enabled: true
+        - Alpha: 0.25
+          Class: rviz_default_plugins/GridCells
+          Color: 25; 255; 0
+          Enabled: true
+          Name: Partition
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /partition
+          Value: true
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: true
+          Name: Information Node
+          Namespaces:
+            {}
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /information_nodes
+          Value: true
+      Enabled: true
+      Name: single
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -711,7 +1030,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 11.458622932434082
+      Distance: 19.313236236572266
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

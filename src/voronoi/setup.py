@@ -24,7 +24,12 @@ setup(
     packages=[package_name],
     py_modules=[
         'script.voronoi_tb4',
-        'script.voronoi_tb3'
+        'script.voronoi_tb3',
+        'script.voronoi_tb3_frontier',
+        'script.voronoi_tb3_infonode',
+        'script.voronoi_tb3_no_frontiers',
+        'script.voronoi_go2',
+        'script.timer',
     ],
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
@@ -33,6 +38,7 @@ setup(
         (os.path.join('share', package_name, 'params'), glob('params/*.yaml')),
         (os.path.join('share', package_name, 'rviz'), glob('rviz/*.rviz')),
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*.world')),
+        (os.path.join('share', package_name, 'models', 'go2'), glob('models/go2/*.urdf')),
     ] + model_files,
     install_requires=['setuptools'],
     zip_safe=True,
@@ -45,6 +51,10 @@ setup(
         'console_scripts': [
             'voronoi_tb4 = script.voronoi_tb4:main',
             'voronoi_tb3 = script.voronoi_tb3:main',
+            'voronoi_tb3_frontier = script.voronoi_tb3_frontier:main',
+            'voronoi_tb3_infonode = script.voronoi_tb3_infonode:main',
+            'voronoi_tb3_no_frontiers = script.voronoi_tb3_no_frontiers:main',
+            'voronoi_go2 = script.voronoi_go2:main',
         ],
     },
 )
