@@ -37,6 +37,9 @@ colcon build
 ## TurtleBot3 Simulation
 
 1. **Launch Simulation and Map Merge Node**:
+
+   This launch file starts a Gazebo simulation with a specified number of TurtleBot3 robots. Each robot runs its own SLAM Toolbox node and contributes to a unified merged map. It establishes static transforms from the global `map` frame to each robot’s namespace based on the robot_count parameter.
+
    ```bash
    cd ~/ros2_voronoi &&
    source install/setup.bash &&
@@ -47,16 +50,19 @@ colcon build
    ```bash
    cd ~/ros2_voronoi &&
    source install/setup.bash &&
-   ros2 run voronoi voronoi_tb3
+   ros2 run voronoi voronoi_tb3 
    ```
+
+   Alternatively, `ros2 run voronoi voronoi_tb3_frontier` can be used which utilizes frontier-based exploration with voronoi partitioning, closely aligning to the algorithm described in the research paper.
 
 ---
 
 ## Unitree Go2
 
-Requires [`go2_ros2_sdk`](https://github.com/abizovnuralem/go2_ros2_sdk)
-
 1. **Launch go2_ros2_sdk**:
+
+   Requires [`go2_ros2_sdk`](https://github.com/abizovnuralem/go2_ros2_sdk)
+   
    ```bash
    cd ~/ros2_ws &&
    source install/setup.bash &&
@@ -66,10 +72,13 @@ Requires [`go2_ros2_sdk`](https://github.com/abizovnuralem/go2_ros2_sdk)
    ```
 
 2. **Start launch script**:
+
+   This launch file starts the `merge_map` node to merge the robot maps and establishes static transforms from the global merged map frame to each robot's individual namespace, based on the user-defined robot_count.
+
    ```bash
    cd ~/ros2_voronoi &&
    source install/setup.bash &&
-   ros2 run voronoi voronoi_tb3
+   ros2 launch go2.launch.py
    ```
 
 3. **Begin Exploration**:
@@ -84,7 +93,15 @@ Requires [`go2_ros2_sdk`](https://github.com/abizovnuralem/go2_ros2_sdk)
 ## **Known Issues**
 
 - **`voronoi_tb3`**:
-   - Robots remain stationary after detecting an obstacle and fail to replan
+   - Robots remain stationary after detecting an obstacle and fail to replan.
+   - Robot namespace and count are hardcoded in the script.
+   - Information nodes have not been implemented.
+   - Does not explicitly consider communication range constraints when determining neighboring robots.
+
+- **tb3.launch.py**
+   - TODO: Utilize Nav2 instead of manual navigation.
+
+- **`voronoi_go2`**: Untested
 
 - **`tb4.launch.py`**: Users may experience intermittent issues with launching SLAM, Nav2, or RViz for additional TurtleBot4 units.
 
@@ -98,7 +115,10 @@ Requires [`go2_ros2_sdk`](https://github.com/abizovnuralem/go2_ros2_sdk)
 This project draws inspiration and code from the following repositories:
 
 1. [**abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot**](https://github.com/abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot):  
-   For map merging, path planning, following, and obstacle avoidance.
+   For path planning, following, obstacle avoidance, and frontier-based exploration.
+
+2. [**abdulkadrtr/mapMergeForMultiRobotMapping-ROS2**](https://github.com/abdulkadrtr/mapMergeForMultiRobotMapping-ROS2):
+   For multi robot map merging.
 
 2. [**Connected-and-Autonomous-Systems-Lab/Voronoi**](https://github.com/Connected-and-Autonomous-Systems-Lab/voronoi):  
    Provides the Voronoi-based exploration algorithm used in this project.  
@@ -107,6 +127,6 @@ This project draws inspiration and code from the following repositories:
 
 ## **Transform Tree**
 
-For three robots
+The following transform tree is produced using the `tb3.launch.py` launch file. 
 
 ![alt text](media/image.png)
