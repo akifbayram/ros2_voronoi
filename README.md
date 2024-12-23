@@ -1,13 +1,13 @@
 # ROS2 Voronoi Multi-Robot Exploration
 
 > **⚠️ Work in Progress**  
-> This setup is currently non-functional and under active development. 
+> This setup is currently under active development. 
 
 ---
 
 ## Overview
 
-This project aims to use a Voronoi-partition-based exploration algorithm to enable multiple robots to autonomously navigate and explore an environment, generating a map through TurtleBot simulations.
+This project aims to use a Voronoi-partition-based exploration algorithm to enable multiple robots to autonomously navigate and explore an environment.
 
 <img src="media/voronoi_tb3_3.gif" width="640"/>
 
@@ -38,17 +38,45 @@ colcon build
 
 1. **Launch Simulation and Map Merge Node**:
    ```bash
-   cd ~/ros2_voronoi
-   . install/setup.bash
+   cd ~/ros2_voronoi &&
+   source install/setup.bash &&
    ros2 launch voronoi tb3.launch.py robot_count:=3
    ```
 
 2. **Start Exploration**:
    ```bash
-   source /etc/turtlebot4/setup.bash
-   cd ~/ros2_voronoi
-   . install/setup.bash
+   cd ~/ros2_voronoi &&
+   source install/setup.bash &&
    ros2 run voronoi voronoi_tb3
+   ```
+
+---
+
+## Unitree Go2
+
+Requires [`go2_ros2_sdk`](https://github.com/abizovnuralem/go2_ros2_sdk)
+
+1. **Launch go2_ros2_sdk**:
+   ```bash
+   cd ~/ros2_ws &&
+   source install/setup.bash &&
+   export ROBOT_IP="robot_ip" &&
+   export CONN_TYPE="webrtc" &&
+   ros2 launch go2_robot_sdk robot.launch.py
+   ```
+
+2. **Start launch script**:
+   ```bash
+   cd ~/ros2_voronoi &&
+   source install/setup.bash &&
+   ros2 run voronoi voronoi_tb3
+   ```
+
+3. **Begin Exploration**:
+   ```bash
+   cd ~/ros2_voronoi
+   source install/setup.bash &&
+   ros2 run voronoi voronoi_go2 
    ```
 
 ---
